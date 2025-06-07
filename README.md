@@ -24,7 +24,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 **Primary**: Create a code block with `glsl-viewer` language:
 
 ### Basic Example
-
+````markdown
 ```glsl-viewer
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / iResolution.xy;
@@ -32,57 +32,24 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     fragColor = vec4(col, 1.0);
 }
 ```
+````
 
-### Animation Example
+### Setting Example
+````markdown
 
 ```glsl-viewer
 // @aspect: 1.0
 // @autoplay: true
-
-void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
-
-    float t = iTime;
-    vec3 col = vec3(0.0);
-
-    for (int i = 0; i < 3; i++) {
-        float angle = float(i) * 2.09 + t * 0.5;
-        vec2 pos = vec2(cos(angle), sin(angle)) * 0.3;
-        float dist = length(uv - pos);
-        col[i] = 0.01 / dist;
-    }
-
-    fragColor = vec4(col, 1.0);
-}
-```
-
-### Setting Example
-
-```glsl-viewer
-// @aspect: 1.0
 // @iChannel0: assets/images/texture.jpg
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord / iResolution.xy;
-
-    // Time-based animation
-    float time = iTime;
-    float timeDelta = iTimeDelta;
-
-    // Frame-based discrete changes
-    float pulse = sin(float(iFrame) * 0.1);
-
-    // Date-based variation
-    float dayFactor = iDate.z / 31.0;
-
-    // Texture sampling (WebGL1/2 compatible)
-    vec3 texColor = texture(iChannel0, uv * 2.0 + time * 0.1).rgb;
-
-    // Complex color calculation
-    vec3 col = texColor * (0.5 + 0.5 * cos(time + uv.x * 3.0 + pulse)) * dayFactor;
-
-    fragColor = vec4(col, 1.0);
+    vec2 uv = (fragCoord-iResolution.xy*.5) / iResolution.y;
+    uv+=vec2(sin(iTime),cos(iTime));
+    vec3 texColor = texture(iChannel0, uv * 2.0).rgb;
+    vec3 col = texColor;
+	fragColor = vec4(col, 1.0);
 }
 ```
+````
 
 ### Texture Path Formats
 
