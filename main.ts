@@ -381,11 +381,11 @@ class GLSLRenderer {
 					return;
 				}
 
-							gl.bindTexture(gl.TEXTURE_2D, texture);
+				gl.bindTexture(gl.TEXTURE_2D, texture);
 
 			// Flip texture vertically to match standard image coordinates
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 
 			// Set texture parameters with repeat wrapping
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
