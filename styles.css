@@ -1,0 +1,91 @@
+/* GLSL Viewer Plugin Styles */
+
+.glsl-viewer-container {
+  position: relative;
+  margin: 0px 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+  display: block;
+  width: auto;
+}
+
+.glsl-viewer-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.glsl-viewer-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+
+.glsl-viewer-button {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glsl-viewer-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.glsl-viewer-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.glsl-viewer-play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 5;
+}
+
+.glsl-viewer-play-overlay svg {
+  width: 32px;
+  height: 32px;
+}
+
+.glsl-viewer-play-overlay:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.glsl-viewer-error {
+  background: var(--background-secondary);
+  color: var(--text-error);
+  padding: 16px;
+  text-align: center;
+  font-family: var(--font-monospace);
+}
+
+.glsl-viewer-hidden {
+  display: none;
+}
