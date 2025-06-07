@@ -10,6 +10,10 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 - ⚙️ Configurable canvas ratio
 - 🔧 In-code block configuration
 
+## Demo
+
+![GLSL Viewer Demo](assets/imgs/examples.gif)
+
 ## Installation
 
 1. Copy this plugin to your Obsidian plugins folder
