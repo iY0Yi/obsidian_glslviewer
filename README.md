@@ -13,7 +13,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 
 ## Demo
 
-![GLSL Viewer Demo](assets/imgs/examples.gif)
+![GLSL Viewer Demo](assets/imgs/short.gif)
 
 ## Installation
 
