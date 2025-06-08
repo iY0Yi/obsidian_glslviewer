@@ -67,13 +67,12 @@ export class ViewerContainer {
 		this.playButton.style.display = config.autoplay ? 'block' : 'none'; // Only show when playing
 		this.controls.appendChild(this.playButton);
 
-		// Create play overlay (shown initially if not autoplay)
-		if (!config.autoplay) {
-			this.playOverlay = document.createElement('button');
-			this.playOverlay.className = 'glsl-viewer-play-overlay';
-			this.playOverlay.innerHTML = getSVGIcon('play');
-			this.container.appendChild(this.playOverlay);
-		}
+		// Create play overlay (always create, but only show initially if not autoplay)
+		this.playOverlay = document.createElement('button');
+		this.playOverlay.className = 'glsl-viewer-play-overlay';
+		this.playOverlay.innerHTML = getSVGIcon('play');
+		this.playOverlay.style.display = config.autoplay ? 'none' : 'flex';
+		this.container.appendChild(this.playOverlay);
 	}
 
 	// Getters for accessing elements

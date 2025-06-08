@@ -155,8 +155,6 @@ export class GLSLRenderer {
 		return { success: true };
 	}
 
-
-
 	private setupUniforms() {
 		if (!this.program) return;
 
@@ -265,6 +263,108 @@ export class GLSLRenderer {
 		return this.textureManager.loadTexture(channelIndex, imagePath);
 	}
 
+	/**
+	 * Capture current frame as JPEG image
+	 * @param quality JPEG quality (0.0 to 1.0)
+	 * @returns Promise that resolves to JPEG blob
+	 */
+	async captureFrame(quality: number = 0.8): Promise<Blob | null> {
+		if (!this.program) {
+			console.error('GLSL Viewer: Cannot capture frame - no program loaded');
+			return null;
+		}
+
+		try {
+			// Ensure we have a fresh render
+			this.render();
+
+			// Convert canvas to blob
+			return new Promise<Blob | null>((resolve) => {
+				this.canvas.toBlob((blob) => {
+					resolve(blob);
+				}, 'image/jpeg', quality);
+			});
+		} catch (error) {
+			console.error('GLSL Viewer: Error capturing frame:', error);
+			return null;
+		}
+	}
+
+		/**
+	 * Capture frame at a specific time without waiting
+	 * @param timeSeconds Time value for iTime uniform (default: 1.0 second)
+	 * @param quality JPEG quality (0.0 to 1.0)
+	 * @returns Promise that resolves to JPEG blob
+	 */
+	async captureAtTime(timeSeconds: number = 1.0, quality: number = 0.8): Promise<Blob | null> {
+		if (!this.program) {
+			console.error('GLSL Viewer: Cannot capture at time - no program loaded');
+			return null;
+		}
+
+		try {
+			// Render one frame with the specified time
+			this.renderAtTime(timeSeconds);
+
+			// Convert canvas to blob
+			return new Promise<Blob | null>((resolve) => {
+				this.canvas.toBlob((blob) => {
+					resolve(blob);
+				}, 'image/jpeg', quality);
+			});
+		} catch (error) {
+			console.error('GLSL Viewer: Error capturing at time:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Render a single frame with a specific time value
+	 * @param timeSeconds Time value for iTime uniform
+	 */
+	private renderAtTime(timeSeconds: number) {
+		if (!this.program) return;
+
+		const gl = this.gl;
+		gl.useProgram(this.program);
+
+		// Set viewport
+		gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+
+		// Update uniforms with specified time
+		gl.uniform3f(this.uniforms.iResolution, this.canvas.width, this.canvas.height, 1.0);
+		gl.uniform1f(this.uniforms.iTime, timeSeconds);
+		gl.uniform1f(this.uniforms.iTimeDelta, 0.016); // Assume ~60fps
+		gl.uniform1i(this.uniforms.iFrame, Math.floor(timeSeconds * 60)); // Approximate frame count
+
+		// Mouse position (use current values)
+		gl.uniform4f(this.uniforms.iMouse, this.mousePosX, this.mousePosY, this.mouseOriX, this.mouseOriY);
+
+		// Date uniform (use current date)
+		const now = new Date();
+		gl.uniform4f(this.uniforms.iDate,
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate(),
+			now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+		);
+
+		// Bind textures
+		this.textureManager.bindTextures(this.uniforms);
+
+		// Draw
+		gl.clearColor(0, 0, 0, 1);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+	}
+
+	/**
+	 * Get the canvas element for this renderer
+	 */
+	getCanvas(): HTMLCanvasElement {
+		return this.canvas;
+	}
+
 	destroy() {
 		if (this.isDestroyed) return; // Prevent multiple calls
 		this.isDestroyed = true;
@@ -281,7 +381,7 @@ export class GLSLRenderer {
 		// Remove from active viewers list (check if plugin still exists)
 		if (this.plugin && this.plugin.activeViewers) {
 			this.plugin.activeViewers.delete(this);
-			console.log(`GLSL Viewer: Removed viewer, active count: ${this.plugin.activeViewers.size}/${this.plugin.settings.maxActiveViewers}`);
+			console.log(`GLSL Viewer: Removed viewer, remaining in Set: ${this.plugin.activeViewers.size}`);
 		}
 	}
 }

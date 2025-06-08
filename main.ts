@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext, App } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, App, Notice } from 'obsidian';
 import { GLSLViewerSettings, DEFAULT_SETTINGS } from './src/types/settings';
 import { ShaderConfig } from './src/types/shader-config';
 import { wrapShaderCode } from './src/utils/shader-templates';
@@ -7,15 +7,20 @@ import { GLSLRenderer, RendererPlugin } from './src/core/renderer';
 import { ViewerContainer } from './src/ui/viewer-container';
 import { ControlsManager } from './src/ui/controls';
 import { ErrorDisplay } from './src/ui/error-display';
+import { ThumbnailManager } from './src/utils/thumbnail-manager';
 
 
 
 export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 	settings: GLSLViewerSettings;
 	activeViewers: Set<GLSLRenderer> = new Set();
+	thumbnailManager: ThumbnailManager;
 
 	async onload() {
 		await this.loadSettings();
+
+		// Initialize thumbnail manager
+		this.thumbnailManager = new ThumbnailManager(this.app);
 
 		// Add setting tab
 		this.addSettingTab(new GLSLViewerSettingTab(this.app, this));
@@ -29,6 +34,8 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		} catch (error) {
 			console.warn('GLSL processor already registered by another plugin');
 		}
+
+
 	}
 
 	onunload() {
@@ -49,6 +56,96 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+
+
+		/**
+	 * Generate thumbnail for non-autoplay viewers if needed
+	 */
+	private async generateThumbnailIfNeeded(shaderCode: string, glslRenderer: GLSLRenderer, viewerContainer: ViewerContainer, config: ShaderConfig) {
+		try {
+			// Check if thumbnail already exists
+			const thumbnailExists = await this.thumbnailManager.thumbnailExists(shaderCode, config);
+
+			if (thumbnailExists) {
+				console.log('GLSL Viewer: Thumbnail already exists, displaying cached version');
+				await this.displayThumbnail(shaderCode, viewerContainer, config);
+			} else {
+				console.log('GLSL Viewer: Generating new thumbnail...');
+
+				// Generate thumbnail at 1 second
+				const imageBlob = await glslRenderer.captureAtTime(1.0);
+				if (imageBlob) {
+					// Save thumbnail
+					const savedPath = await this.thumbnailManager.saveThumbnail(shaderCode, imageBlob, config);
+					if (savedPath) {
+						console.log(`GLSL Viewer: Generated thumbnail: ${savedPath}`);
+						await this.displayThumbnail(shaderCode, viewerContainer, config);
+					} else {
+						console.warn('GLSL Viewer: Failed to save thumbnail');
+					}
+				} else {
+					console.warn('GLSL Viewer: Failed to capture thumbnail');
+				}
+			}
+		} catch (error) {
+			console.error('GLSL Viewer: Error in thumbnail generation:', error);
+		}
+	}
+
+	/**
+	 * Display thumbnail as background image in placeholder
+	 */
+	private async displayThumbnail(shaderCode: string, viewerContainer: ViewerContainer, config: ShaderConfig) {
+		try {
+			const dataUrl = await this.thumbnailManager.getThumbnailDataUrl(shaderCode, config);
+			if (dataUrl) {
+				const placeholder = viewerContainer.getPlaceholder();
+				placeholder.style.backgroundImage = `url(${dataUrl})`;
+				placeholder.style.backgroundSize = 'cover';
+				placeholder.style.backgroundPosition = 'center';
+				placeholder.style.backgroundRepeat = 'no-repeat';
+				console.log('GLSL Viewer: Thumbnail displayed in placeholder');
+			} else {
+				console.warn('GLSL Viewer: Failed to load thumbnail data URL');
+			}
+		} catch (error) {
+			console.error('GLSL Viewer: Error displaying thumbnail:', error);
+		}
+	}
+
+	/**
+	 * Count active GLSL viewers by checking actual DOM elements
+	 */
+	private countActiveDOMViewers(): number {
+		// Count all .glsl-viewer-container elements in the document
+		const containers = document.querySelectorAll('.glsl-viewer-container');
+		return containers.length;
+	}
+
+	/**
+	 * Clean up any existing GLSL viewer in the given element
+	 */
+	private cleanupExistingViewer(el: HTMLElement) {
+		// Find existing GLSL viewer container
+		const existingContainer = el.querySelector('.glsl-viewer-container');
+		if (existingContainer) {
+			// Find the canvas element
+			const canvas = existingContainer.querySelector('.glsl-viewer-canvas') as HTMLCanvasElement;
+			if (canvas) {
+				// Find and destroy the corresponding GLSLRenderer
+				for (const viewer of this.activeViewers) {
+					if (viewer.getCanvas() === canvas) {
+						console.log('GLSL Viewer: Cleaning up existing viewer before recreating');
+						viewer.destroy();
+						break;
+					}
+				}
+			}
+			// Remove the existing container from DOM
+			existingContainer.remove();
+		}
 	}
 
 
@@ -81,6 +178,9 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		if (!this.shouldProcessBlock(source)) {
 			return;
 		}
+
+		// Clean up any existing GLSL viewer in this element
+		this.cleanupExistingViewer(el);
 
 		// Create viewer container
 		const viewerContainer = new ViewerContainer(config, el);
@@ -160,7 +260,9 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 		try {
 			// Check if we've reached the maximum number of active viewers
-			if (this.activeViewers.size >= this.settings.maxActiveViewers) {
+			// Use DOM-based counting for accurate resource limit enforcement
+			const currentViewerCount = this.countActiveDOMViewers();
+			if (currentViewerCount >= this.settings.maxActiveViewers) {
 				ErrorDisplay.createAndShow(container, 'Maximum number of active GLSL viewers reached');
 				return;
 			}
@@ -186,11 +288,15 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 			// Track active viewer
 			this.activeViewers.add(glslRenderer);
-			console.log(`GLSL Viewer: Added viewer, active count: ${this.activeViewers.size}/${this.settings.maxActiveViewers}`);
+			const domViewerCount = this.countActiveDOMViewers();
+			console.log(`GLSL Viewer: Added viewer, active: ${domViewerCount}/${this.settings.maxActiveViewers}`);
 
 			// Start animation if autoplay is enabled
 			if (config.autoplay) {
 				glslRenderer.play();
+			} else {
+				// For non-autoplay viewers, generate thumbnail
+				this.generateThumbnailIfNeeded(shaderCode, glslRenderer, viewerContainer, config);
 			}
 
 		} catch (error) {
