@@ -1,5 +1,5 @@
 {
-	"id": "obsidian-glsl-viewer",
+	"id": "glsl-viewer",
 	"name": "GLSL Viewer",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
