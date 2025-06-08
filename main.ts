@@ -8,6 +8,7 @@ import { ViewerContainer } from './src/ui/viewer-container';
 import { ControlsManager } from './src/ui/controls';
 import { ErrorDisplay } from './src/ui/error-display';
 import { ThumbnailManager } from './src/utils/thumbnail-manager';
+import { TemplateManager } from './src/utils/template-manager';
 
 
 
@@ -15,12 +16,17 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 	settings: GLSLViewerSettings;
 	activeViewers: Set<GLSLRenderer> = new Set();
 	thumbnailManager: ThumbnailManager;
+	templateManager: TemplateManager;
 
 	async onload() {
 		await this.loadSettings();
 
-		// Initialize thumbnail manager
+		// Initialize managers
 		this.thumbnailManager = new ThumbnailManager(this.app);
+		this.templateManager = new TemplateManager(this.app);
+
+		// Ensure templates directory exists
+		await this.templateManager.ensureTemplatesDir();
 
 		// Add setting tab
 		this.addSettingTab(new GLSLViewerSettingTab(this.app, this));
@@ -226,6 +232,8 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 					config.autoplay = comment.substring(10).trim() === 'true';
 				} else if (comment.startsWith('@hideCode:')) {
 					config.hideCode = comment.substring(10).trim() === 'true';
+				} else if (comment.startsWith('@template:')) {
+					config.template = comment.substring(10).trim();
 				} else if (comment.startsWith('@iChannel0:')) {
 					config.iChannel0 = comment.substring(11).trim();
 				} else if (comment.startsWith('@iChannel1:')) {
@@ -270,8 +278,21 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			// Create GLSL renderer instance
 			const glslRenderer = new GLSLRenderer(canvas, this.app, this);
 
+			// Apply template if specified
+			let processedShaderCode = shaderCode;
+			if (config.template) {
+				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
+				if (templateResult) {
+					processedShaderCode = templateResult;
+					console.log(`GLSL Viewer: Template applied: ${config.template}`);
+				} else {
+					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
+					return;
+				}
+			}
+
 			// Create Shadertoy-compatible shader code
-			const fullShaderCode = wrapShaderCode(shaderCode, glslRenderer.isWebGL2);
+			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
 
 			// Load shader
 			const loadResult = glslRenderer.load(fullShaderCode);
