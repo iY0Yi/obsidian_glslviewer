@@ -49,7 +49,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 **Comment Styles:**
 
 **Single-line comments:**
-````markdown
+````glsl
 ```glsl
 // @viewer
 // @aspect: 0.75
@@ -63,7 +63,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ````
 
 **Multi-line comments** (cleaner for multiple directives):
-````markdown
+````glsl
 ```glsl
 /*
 @viewer
@@ -81,7 +81,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ````
 
 **@hideCode Example** (shows only the viewer):
-````markdown
+````glsl
 ```glsl
 // @viewer
 // @hideCode: true
@@ -90,7 +90,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ````
 
 ### Basic Example
-````markdown
+````glsl
 ```glsl
 // @viewer
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
@@ -102,7 +102,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ````
 
 ### Setting Example
-````markdown
+````glsl
 
 ```glsl
 // @viewer
@@ -123,7 +123,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
 Templates enable complex shader patterns with minimal code. Create custom templates in `.obsidian/plugins/glsl-viewer/templates/`:
 
-````markdown
+````glsl
 ```glsl
 // @viewer
 // @template: raymarching.glsl
