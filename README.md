@@ -91,7 +91,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
 ### Basic Example
 ````markdown
-```glsl-viewer
+```glsl
+// @viewer
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / iResolution.xy;
     vec3 col = 0.5 + 0.5 * cos(iTime + uv.xxy + vec3(0, 2, 4));
@@ -103,7 +104,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ### Setting Example
 ````markdown
 
-```glsl-viewer
+```glsl
+// @viewer
 // @aspect: 1.0
 // @autoplay: true
 // @iChannel0: assets/images/texture.jpg
@@ -122,7 +124,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 Templates enable complex shader patterns with minimal code. Create custom templates in `.obsidian/plugins/glsl-viewer/templates/`:
 
 ````markdown
-```glsl-viewer
+```glsl
+// @viewer
 // @template: raymarching.glsl
 // @autoplay: false
 
