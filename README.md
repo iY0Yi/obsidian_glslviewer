@@ -114,7 +114,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     uv+=vec2(sin(iTime),cos(iTime));
     vec3 texColor = texture(iChannel0, uv * 2.0).rgb;
     vec3 col = texColor;
-	fragColor = vec4(col, 1.0);
+    fragColor = vec4(col, 1.0);
 }
 ```
 ````
