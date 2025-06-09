@@ -36,10 +36,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 2. Enable the plugin in Obsidian settings
 
 ## Usage
-
-**Primary**: Create a code block with `glsl-viewer` language:
-
-**Alternative**: Use standard `glsl` code blocks with `@viewer` directive for syntax highlighting:
+Use standard `glsl` code blocks with `@viewer` directive for syntax highlighting:
 
 **Benefits of using `glsl` blocks:**
 - ✅ **Syntax highlighting** in edit mode
