@@ -123,6 +123,7 @@ vec4 map(vec3 p) {
 |-----------|---------|-------------|
 | **Vault-relative** | `images/texture.jpg` | Relative to vault root |
 | **Subfolder** | `assets/textures/noise.png` | Files in subfolders |
+
 </br></br></br>
 ## Configuration Options
 
@@ -151,7 +152,9 @@ vec4 map(vec3 p) {
 - `vec4 iMouse` - Mouse position (Shadertoy-compatible) ✅
 - `vec4 iDate` - Date info (year, month, day, seconds) ✅
 - `sampler2D iChannel0-3` - Textures ✅
+
 </br></br></br>
+
 ## Technical Details
 
 - **Rendering**: Pure WebGL implementation
