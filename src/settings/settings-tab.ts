@@ -1,8 +1,9 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { GLSLViewerSettings } from '../types/settings';
+import type { Plugin } from 'obsidian';
 
 // Type for the plugin reference
-interface GLSLViewerPlugin {
+interface GLSLViewerPlugin extends Plugin {
 	settings: GLSLViewerSettings;
 	saveSettings(): Promise<void>;
 }
@@ -11,7 +12,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 	plugin: GLSLViewerPlugin;
 
 	constructor(app: App, plugin: GLSLViewerPlugin) {
-		super(app, plugin as any);
+		super(app, plugin);
 		this.plugin = plugin;
 	}
 
@@ -81,14 +82,22 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		containerEl.createEl('h3', { text: 'Default Textures' });
 
 		const textureInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
-		textureInfo.innerHTML = `
-			<p>Textures automatically loaded when not specified in shader comments. Leave empty to disable.</p>
-			<p><strong>Supported:</strong> Vault-relative paths only</p>
-			<p><strong>Note:</strong> Changes apply to new shaders only.</p>
-		`;
+		// Use DOM API instead of innerHTML for security
+		const para1 = textureInfo.createEl('p');
+		para1.textContent = 'Textures automatically loaded when not specified in shader comments. Leave empty to disable.';
+
+		const para2 = textureInfo.createEl('p');
+		const strong = para2.createEl('strong');
+		strong.textContent = 'Supported:';
+		para2.appendText(' Vault-relative paths only');
+
+		const para3 = textureInfo.createEl('p');
+		const noteStrong = para3.createEl('strong');
+		noteStrong.textContent = 'Note:';
+		para3.appendText(' Changes apply to new shaders only.');
 
 		// Helper function to create texture setting
-		const createTextureSetting = (channelName: string, channelIndex: number, defaultValue: string) => {
+		const createTextureSetting = (channelName: 'defaultIChannel0' | 'defaultIChannel1' | 'defaultIChannel2' | 'defaultIChannel3', channelIndex: number, defaultValue: string) => {
 			const setting = new Setting(containerEl)
 				.setName(`iChannel${channelIndex} Default`)
 				.setDesc(`Default texture for iChannel${channelIndex}. ${defaultValue ? `Currently set: ${defaultValue.length > 40 ? defaultValue.substring(0, 40) + '...' : defaultValue}` : 'Not set'}`)
@@ -96,7 +105,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					.setPlaceholder('path/to/texture.png')
 					.setValue(defaultValue)
 					.onChange(async (value) => {
-						(this.plugin.settings as any)[channelName] = value;
+						this.plugin.settings[channelName] = value;
 						await this.plugin.saveSettings();
 						// Update description to show current status
 						setting.setDesc(`Default texture for iChannel${channelIndex}. ${value ? `Currently set: ${value.length > 40 ? value.substring(0, 40) + '...' : value}` : 'Not set'}`);
@@ -109,7 +118,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					.setButtonText('Clear')
 					.setTooltip(`Clear iChannel${channelIndex} default`)
 					.onClick(async () => {
-						(this.plugin.settings as any)[channelName] = '';
+						this.plugin.settings[channelName] = '';
 						await this.plugin.saveSettings();
 						this.display(); // Refresh display
 					})

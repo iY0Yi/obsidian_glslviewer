@@ -6,3 +6,21 @@ export function getSVGIcon(iconName: string): string {
 	};
 	return icons[iconName as keyof typeof icons] || '';
 }
+
+// Secure DOM API-based SVG icon creation
+export function createSVGIconElement(iconName: string): SVGElement | null {
+	const iconSVGString = getSVGIcon(iconName);
+	if (!iconSVGString) return null;
+
+	// Create SVG element using DOM parser to avoid innerHTML security issues
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(iconSVGString, 'image/svg+xml');
+	const svgElement = doc.documentElement;
+
+	// Import the SVG element into the current document and ensure it's an SVG element
+	const importedElement = document.importNode(svgElement, true);
+	if (importedElement instanceof SVGElement) {
+		return importedElement;
+	}
+	return null;
+}

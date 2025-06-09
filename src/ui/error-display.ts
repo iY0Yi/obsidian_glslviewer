@@ -3,66 +3,37 @@ export class ErrorDisplay {
 
 	constructor(container: HTMLElement) {
 		this.container = container;
-		this.ensureRelativePosition();
 	}
 
-	private ensureRelativePosition() {
-		// Make container position relative to enable absolute positioning of error
-		this.container.style.position = 'relative';
-	}
-
-	showError(message: string) {
-		// Remove any existing error display
+	show(errorMessage: string) {
+		// Clear any existing content
 		this.clearError();
 
-		// Create error overlay that covers the entire canvas area
+		// Create error display using CSS classes instead of inline styles
 		const errorDiv = document.createElement('div');
 		errorDiv.className = 'glsl-viewer-error';
 
-		// Style: full canvas coverage with red background
-		errorDiv.style.cssText = `
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			background-color: #cc0000;
-			color: white;
-			font-family: monospace;
-			font-size: 12px;
-			padding: 20px;
-			box-sizing: border-box;
-			word-wrap: break-word;
-			overflow-y: auto;
-			z-index: 1000;
-		`;
-
-		// Add error title
+		// Create title
 		const titleDiv = document.createElement('div');
-		titleDiv.textContent = 'GLSL Compilation Error';
-		titleDiv.style.cssText = `
-			font-weight: bold;
-			font-size: 14px;
-			margin-bottom: 10px;
-			text-align: left;
-		`;
-		errorDiv.appendChild(titleDiv);
+		titleDiv.className = 'glsl-viewer-error-title';
+		titleDiv.textContent = 'GLSL Shader Error';
 
-		// Add error message (clean up control characters but preserve newlines)
+		// Create message
 		const messageDiv = document.createElement('div');
-		const cleanMessage = this.cleanErrorMessage(message);
-		messageDiv.textContent = cleanMessage;
-		messageDiv.style.cssText = `
-			text-align: left;
-			line-height: 1.4;
-			max-width: 100%;
-			white-space: pre-wrap;
-		`;
-		errorDiv.appendChild(messageDiv);
+		messageDiv.className = 'glsl-viewer-error-message';
+		messageDiv.textContent = this.cleanErrorMessage(errorMessage);
 
-		// Add error div to container
+		// Assemble the error display
+		errorDiv.appendChild(titleDiv);
+		errorDiv.appendChild(messageDiv);
 		this.container.appendChild(errorDiv);
 	}
+
+	hide() {
+		this.clearError();
+	}
+
+
 
 	clearError() {
 		const existingError = this.container.querySelector('.glsl-viewer-error');
@@ -81,9 +52,9 @@ export class ErrorDisplay {
 	}
 
 	// Static method for creating error displays
-	static createAndShow(container: HTMLElement, message: string): ErrorDisplay {
-		const errorDisplay = new ErrorDisplay(container);
-		errorDisplay.showError(message);
-		return errorDisplay;
+	static createAndShow(container: HTMLElement, errorMessage: string): ErrorDisplay {
+		const display = new ErrorDisplay(container);
+		display.show(errorMessage);
+		return display;
 	}
 }

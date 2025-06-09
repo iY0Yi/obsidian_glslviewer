@@ -2,10 +2,12 @@ import { App } from 'obsidian';
 
 export class TemplateManager {
 	private app: App;
-	private templatesDir: string = '.obsidian/plugins/glsl-viewer/templates';
+	private templatesDir: string;
 
 	constructor(app: App) {
 		this.app = app;
+		// Use Vault#configDir instead of hardcoded .obsidian
+		this.templatesDir = `${this.app.vault.configDir}/plugins/glsl-viewer/templates`;
 	}
 
 		/**
@@ -27,14 +29,11 @@ export class TemplateManager {
 					const exists = await adapter.exists(currentPath);
 					if (!exists) {
 						await adapter.mkdir(currentPath);
-						console.log(`GLSL Viewer: Created directory: ${currentPath}`);
 					}
 				}
-
-				console.log(`GLSL Viewer: Templates directory ready: ${this.templatesDir}`);
 			}
 		} catch (error) {
-			console.warn('GLSL Viewer: Templates directory creation warning:', error);
+			// Silent handling - templates are optional
 		}
 	}
 
@@ -51,7 +50,6 @@ export class TemplateManager {
 			// Check if template exists
 			const exists = await adapter.exists(templatePath);
 			if (!exists) {
-				console.error(`GLSL Viewer: Template not found: ${templatePath}`);
 				return null;
 			}
 
@@ -61,10 +59,8 @@ export class TemplateManager {
 			// Replace placeholder with user code
 			const result = templateContent.replace('@TEMPLATE_LINES', userCode);
 
-			console.log(`GLSL Viewer: Applied template: ${templateName}`);
 			return result;
 		} catch (error) {
-			console.error('GLSL Viewer: Error loading template:', error);
 			return null;
 		}
 	}
@@ -78,7 +74,6 @@ export class TemplateManager {
 			const templatePath = `${this.templatesDir}/${templateName}`;
 			return await adapter.exists(templatePath);
 		} catch (error) {
-			console.error('GLSL Viewer: Error checking template existence:', error);
 			return false;
 		}
 	}

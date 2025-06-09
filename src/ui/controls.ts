@@ -39,8 +39,8 @@ export class ControlsManager {
 				}
 			});
 
-			// Set initial display state
-			playOverlay.style.display = this.config.autoplay ? 'none' : 'flex';
+			// Initial display state is already handled by CSS classes in ViewerContainer
+			// No need to manually set style.display here
 		}
 	}
 
@@ -48,9 +48,9 @@ export class ControlsManager {
 		this.glslRenderer.play();
 		this.viewerContainer.hidePlayOverlay();
 
-		// Switch from placeholder to canvas (only if placeholder is visible)
+		// Switch from placeholder to canvas (check if placeholder is visible)
 		const placeholder = this.viewerContainer.getPlaceholder();
-		if (placeholder && placeholder.style.display !== 'none') {
+		if (placeholder && placeholder.classList.contains('visible')) {
 			this.viewerContainer.hidePlaceholder();
 			this.viewerContainer.showCanvas();
 		}

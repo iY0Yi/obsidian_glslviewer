@@ -1,4 +1,5 @@
 import { App, TFile, TFolder } from 'obsidian';
+import { ShaderConfig } from '../types/shader-config';
 
 export class ThumbnailManager {
 	private app: App;
@@ -11,7 +12,7 @@ export class ThumbnailManager {
 	/**
 	 * Generate hash from shader code and config for thumbnail filename
 	 */
-	private generateHash(shaderCode: string, config?: any): string {
+	private generateHash(shaderCode: string, config?: ShaderConfig): string {
 		// Include config that affects rendering in hash generation
 		let hashInput = shaderCode;
 
@@ -37,7 +38,7 @@ export class ThumbnailManager {
 	/**
 	 * Get thumbnail file path for given shader code and config
 	 */
-	private getThumbnailFilePath(shaderCode: string, config?: any): string {
+	private getThumbnailFilePath(shaderCode: string, config?: ShaderConfig): string {
 		const hash = this.generateHash(shaderCode, config);
 		return `${this.thumbnailDir}/${hash}.jpg`;
 	}
@@ -61,20 +62,18 @@ export class ThumbnailManager {
 					const exists = await adapter.exists(currentPath);
 					if (!exists) {
 						await adapter.mkdir(currentPath);
-						console.log(`GLSL Viewer: Created directory: ${currentPath}`);
 					}
 				}
 			}
 		} catch (error) {
 			// If folder creation fails, it might already exist
-			console.warn(`GLSL Viewer: Folder creation warning (may already exist):`, error);
 		}
 	}
 
 			/**
 	 * Check if thumbnail exists for given shader code and config
 	 */
-	async thumbnailExists(shaderCode: string, config?: any): Promise<boolean> {
+	async thumbnailExists(shaderCode: string, config?: ShaderConfig): Promise<boolean> {
 		const thumbnailPath = this.getThumbnailFilePath(shaderCode, config);
 		return await this.app.vault.adapter.exists(thumbnailPath);
 	}
@@ -82,7 +81,7 @@ export class ThumbnailManager {
 	/**
 	 * Save thumbnail image to vault
 	 */
-	async saveThumbnail(shaderCode: string, imageBlob: Blob, config?: any): Promise<string | null> {
+	async saveThumbnail(shaderCode: string, imageBlob: Blob, config?: ShaderConfig): Promise<string | null> {
 		try {
 			await this.ensureThumbnailDir();
 
@@ -95,11 +94,9 @@ export class ThumbnailManager {
 
 			// Write file directly using adapter
 			await adapter.writeBinary(thumbnailPath, uint8Array);
-			console.log(`GLSL Viewer: Saved thumbnail using adapter: ${thumbnailPath}`);
 
 			return thumbnailPath;
 		} catch (error) {
-			console.error('GLSL Viewer: Error saving thumbnail:', error);
 			return null;
 		}
 	}
@@ -107,7 +104,7 @@ export class ThumbnailManager {
 	/**
 	 * Get thumbnail file path if it exists
 	 */
-	async getThumbnailUrl(shaderCode: string, config?: any): Promise<string | null> {
+	async getThumbnailUrl(shaderCode: string, config?: ShaderConfig): Promise<string | null> {
 		const thumbnailPath = this.getThumbnailFilePath(shaderCode, config);
 		const exists = await this.thumbnailExists(shaderCode, config);
 		return exists ? thumbnailPath : null;
@@ -116,7 +113,7 @@ export class ThumbnailManager {
 	/**
 	 * Get thumbnail as data URL for display
 	 */
-	async getThumbnailDataUrl(shaderCode: string, config?: any): Promise<string | null> {
+	async getThumbnailDataUrl(shaderCode: string, config?: ShaderConfig): Promise<string | null> {
 		try {
 			const thumbnailPath = this.getThumbnailFilePath(shaderCode, config);
 			const adapter = this.app.vault.adapter;
@@ -138,7 +135,6 @@ export class ThumbnailManager {
 				reader.readAsDataURL(blob);
 			});
 		} catch (error) {
-			console.error('GLSL Viewer: Error reading thumbnail:', error);
 			return null;
 		}
 	}

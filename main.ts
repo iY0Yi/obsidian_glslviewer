@@ -10,8 +10,6 @@ import { ErrorDisplay } from './src/ui/error-display';
 import { ThumbnailManager } from './src/utils/thumbnail-manager';
 import { TemplateManager } from './src/utils/template-manager';
 
-
-
 export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 	settings: GLSLViewerSettings;
 	activeViewers: Set<GLSLRenderer> = new Set();
@@ -32,14 +30,23 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		this.addSettingTab(new GLSLViewerSettingTab(this.app, this));
 
 		// Process GLSL code blocks - using unique language name to avoid conflicts
-		this.registerMarkdownCodeBlockProcessor('glsl-viewer', this.processGLSLBlock.bind(this));
+		this.registerMarkdownCodeBlockProcessor('glsl-viewer', (source, el, ctx) => {
+			this.processGLSLBlock(source, el, ctx);
+		});
 
-		// Also register for 'glsl' if available (fallback)
-		try {
-			this.registerMarkdownCodeBlockProcessor('glsl', this.processGLSLBlock.bind(this));
-		} catch (error) {
-			console.warn('GLSL processor already registered by another plugin');
-		}
+				// Process GLSL code blocks with @viewer directive
+		this.registerMarkdownCodeBlockProcessor('glsl', (source, el, ctx) => {
+			// Check if we're in edit mode by looking at the document structure
+			const isEditMode = this.isInEditMode(el);
+
+			if (this.hasViewerDirective(source)) {
+				if (isEditMode) {
+					this.processGLSLBlockEditMode(source, el, ctx);
+				} else {
+					this.processGLSLBlockReadingMode(source, el, ctx);
+				}
+			}
+		});
 
 
 	}
@@ -50,7 +57,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			try {
 				viewer.destroy();
 			} catch (e) {
-				console.warn('Error destroying GLSL viewer:', e);
+				// Silent cleanup
 			}
 		});
 		this.activeViewers.clear();
@@ -64,9 +71,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		await this.saveData(this.settings);
 	}
 
-
-
-		/**
+	/**
 	 * Generate thumbnail for non-autoplay viewers if needed
 	 */
 	private async generateThumbnailIfNeeded(shaderCode: string, glslRenderer: GLSLRenderer, viewerContainer: ViewerContainer, config: ShaderConfig) {
@@ -75,28 +80,20 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			const thumbnailExists = await this.thumbnailManager.thumbnailExists(shaderCode, config);
 
 			if (thumbnailExists) {
-				console.log('GLSL Viewer: Thumbnail already exists, displaying cached version');
 				await this.displayThumbnail(shaderCode, viewerContainer, config);
 			} else {
-				console.log('GLSL Viewer: Generating new thumbnail...');
-
 				// Generate thumbnail at 1 second
 				const imageBlob = await glslRenderer.captureAtTime(1.0);
 				if (imageBlob) {
 					// Save thumbnail
 					const savedPath = await this.thumbnailManager.saveThumbnail(shaderCode, imageBlob, config);
 					if (savedPath) {
-						console.log(`GLSL Viewer: Generated thumbnail: ${savedPath}`);
 						await this.displayThumbnail(shaderCode, viewerContainer, config);
-					} else {
-						console.warn('GLSL Viewer: Failed to save thumbnail');
 					}
-				} else {
-					console.warn('GLSL Viewer: Failed to capture thumbnail');
 				}
 			}
 		} catch (error) {
-			console.error('GLSL Viewer: Error in thumbnail generation:', error);
+			// Silent handling - thumbnails are optional
 		}
 	}
 
@@ -107,17 +104,11 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		try {
 			const dataUrl = await this.thumbnailManager.getThumbnailDataUrl(shaderCode, config);
 			if (dataUrl) {
-				const placeholder = viewerContainer.getPlaceholder();
-				placeholder.style.backgroundImage = `url(${dataUrl})`;
-				placeholder.style.backgroundSize = 'cover';
-				placeholder.style.backgroundPosition = 'center';
-				placeholder.style.backgroundRepeat = 'no-repeat';
-				console.log('GLSL Viewer: Thumbnail displayed in placeholder');
-			} else {
-				console.warn('GLSL Viewer: Failed to load thumbnail data URL');
+				// Use CSS variables instead of direct style manipulation
+				viewerContainer.setThumbnail(dataUrl);
 			}
 		} catch (error) {
-			console.error('GLSL Viewer: Error displaying thumbnail:', error);
+			// Silent handling - thumbnails are optional
 		}
 	}
 
@@ -143,7 +134,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 				// Find and destroy the corresponding GLSLRenderer
 				for (const viewer of this.activeViewers) {
 					if (viewer.getCanvas() === canvas) {
-						console.log('GLSL Viewer: Cleaning up existing viewer before recreating');
 						viewer.destroy();
 						break;
 					}
@@ -153,8 +143,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			existingContainer.remove();
 		}
 	}
-
-
 
 	private async loadTextures(glslRenderer: GLSLRenderer, config: ShaderConfig) {
 		const texturePromises: Promise<boolean>[] = [];
@@ -179,11 +167,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 	private processGLSLBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
 		// Parse shader config from comments
 		const config = this.parseShaderConfig(source);
-
-		// Check if this block should be processed
-		if (!this.shouldProcessBlock(source)) {
-			return;
-		}
 
 		// Clean up any existing GLSL viewer in this element
 		this.cleanupExistingViewer(el);
@@ -217,48 +200,89 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			iChannel3: this.settings.defaultIChannel3 || undefined,
 		};
 
+		// Parse directives from single-line comments (//)
 		const lines = source.split('\n');
 		for (const line of lines) {
 			const trimmed = line.trim();
 			if (trimmed.startsWith('//')) {
 				const comment = trimmed.substring(2).trim();
+				this.parseDirective(comment, config);
+			}
+		}
 
-				if (comment.startsWith('@aspect:')) {
-					const aspectValue = parseFloat(comment.substring(8).trim());
-					if (!isNaN(aspectValue) && aspectValue > 0) {
-						config.aspect = aspectValue;
-					}
-				} else if (comment.startsWith('@autoplay:')) {
-					config.autoplay = comment.substring(10).trim() === 'true';
-				} else if (comment.startsWith('@hideCode:')) {
-					config.hideCode = comment.substring(10).trim() === 'true';
-				} else if (comment.startsWith('@template:')) {
-					config.template = comment.substring(10).trim();
-				} else if (comment.startsWith('@iChannel0:')) {
-					config.iChannel0 = comment.substring(11).trim();
-				} else if (comment.startsWith('@iChannel1:')) {
-					config.iChannel1 = comment.substring(11).trim();
-				} else if (comment.startsWith('@iChannel2:')) {
-					config.iChannel2 = comment.substring(11).trim();
-				} else if (comment.startsWith('@iChannel3:')) {
-					config.iChannel3 = comment.substring(11).trim();
-				}
+		// Parse directives from multi-line comments (/* */)
+		const multiLineCommentRegex = /\/\*[\s\S]*?\*\//g;
+		let match;
+		while ((match = multiLineCommentRegex.exec(source)) !== null) {
+			const commentContent = match[0];
+
+			// Remove /* and */ and process content
+			const cleanContent = commentContent.replace(/^\/\*/, '').replace(/\*\/$/, '');
+			const commentLines = cleanContent.split('\n');
+
+			for (const commentLine of commentLines) {
+				const trimmedComment = commentLine.trim();
+				// Remove any leading * from comment lines
+				const cleanDirective = trimmedComment.replace(/^\*\s*/, '');
+				this.parseDirective(cleanDirective, config);
 			}
 		}
 
 		return config;
 	}
 
-	private shouldProcessBlock(source: string): boolean {
-		return true; // Always process glsl-viewer code blocks
+	/**
+	 * Parse a single directive line and update config
+	 */
+	private parseDirective(directive: string, config: ShaderConfig) {
+		if (directive.startsWith('@aspect:')) {
+			const aspectValue = parseFloat(directive.substring(8).trim());
+			if (!isNaN(aspectValue) && aspectValue > 0) {
+				config.aspect = aspectValue;
+			}
+		} else if (directive.startsWith('@autoplay:')) {
+			config.autoplay = directive.substring(10).trim() === 'true';
+		} else if (directive.startsWith('@hideCode:')) {
+			config.hideCode = directive.substring(10).trim() === 'true';
+		} else if (directive.startsWith('@template:')) {
+			config.template = directive.substring(10).trim();
+		} else if (directive.startsWith('@iChannel0:')) {
+			config.iChannel0 = directive.substring(11).trim();
+		} else if (directive.startsWith('@iChannel1:')) {
+			config.iChannel1 = directive.substring(11).trim();
+		} else if (directive.startsWith('@iChannel2:')) {
+			config.iChannel2 = directive.substring(11).trim();
+		} else if (directive.startsWith('@iChannel3:')) {
+			config.iChannel3 = directive.substring(11).trim();
+		}
 	}
 
 	private extractShaderCode(source: string): string {
-		const lines = source.split('\n');
+		// First remove multi-line comments that contain directives
+		let processedSource = source;
+
+		const multiLineCommentRegex = /\/\*[\s\S]*?\*\//g;
+		processedSource = processedSource.replace(multiLineCommentRegex, (match) => {
+			const commentContent = match;
+			const cleanContent = commentContent.replace(/^\/\*/, '').replace(/\*\/$/, '');
+
+			// Check if this comment contains any directives
+			const hasDirectives = cleanContent.split('\n').some(line => {
+				const trimmed = line.trim().replace(/^\*\s*/, '');
+				return trimmed.startsWith('@');
+			});
+
+			// If it contains directives, remove it; otherwise keep it
+			return hasDirectives ? '' : match;
+		});
+
+		// Then filter out single-line comment directives
+		const lines = processedSource.split('\n');
 		const codeLines = lines.filter(line => {
 			const trimmed = line.trim();
 			return !trimmed.startsWith('//') || !trimmed.substring(2).trim().startsWith('@');
 		});
+
 		return codeLines.join('\n');
 	}
 
@@ -284,7 +308,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
 				if (templateResult) {
 					processedShaderCode = templateResult;
-					console.log(`GLSL Viewer: Template applied: ${config.template}`);
 				} else {
 					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
 					return;
@@ -309,8 +332,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 			// Track active viewer
 			this.activeViewers.add(glslRenderer);
-			const domViewerCount = this.countActiveDOMViewers();
-			console.log(`GLSL Viewer: Added viewer, active: ${domViewerCount}/${this.settings.maxActiveViewers}`);
 
 			// Start animation if autoplay is enabled
 			if (config.autoplay) {
@@ -322,8 +343,179 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			console.error('Error creating GLSL viewer:', errorMessage);
 			ErrorDisplay.createAndShow(container, `Unexpected error: ${errorMessage}`);
+		}
+	}
+
+	/**
+	 * Quick check for @viewer directive
+	 */
+	private hasViewerDirective(source: string): boolean {
+		// Check for @viewer in single-line comments (//)
+		const lines = source.split('\n');
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (trimmed.startsWith('//')) {
+				const comment = trimmed.substring(2).trim();
+				if (comment.startsWith('@viewer')) {
+					return true;
+				}
+			}
+		}
+
+		// Check for @viewer in multi-line comments (/* */)
+		const multiLineCommentRegex = /\/\*[\s\S]*?\*\//g;
+		let match;
+		while ((match = multiLineCommentRegex.exec(source)) !== null) {
+			const commentContent = match[0];
+			// Remove /* and */ and check content
+			const cleanContent = commentContent.replace(/^\/\*/, '').replace(/\*\/$/, '');
+			const commentLines = cleanContent.split('\n');
+
+			for (const commentLine of commentLines) {
+				const trimmedComment = commentLine.trim();
+				if (trimmedComment.startsWith('@viewer')) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+
+
+		/**
+	 * Check if we're currently in edit mode or reading mode
+	 */
+	private isInEditMode(el: HTMLElement): boolean {
+		// Check if we're inside a CodeMirror editor (edit mode)
+		let current: HTMLElement | null = el;
+		let depth = 0;
+		while (current && depth < 10) {
+			if (current.classList.contains('cm-editor') ||
+				current.classList.contains('CodeMirror') ||
+				current.classList.contains('markdown-source-view') ||
+				current.classList.contains('cm-content') ||
+				current.classList.contains('workspace-leaf-content') && current.querySelector('.markdown-source-view')) {
+				return true;
+			}
+			current = current.parentElement;
+			depth++;
+		}
+
+		// Check if we're in reading view
+		const readingView = el.closest('.markdown-reading-view') || el.closest('.markdown-preview-view');
+		if (readingView) {
+			return false;
+		}
+
+		// Check document-level classes for edit mode
+		const hasEditingClass = document.querySelector('.workspace-leaf.mod-active .markdown-source-view');
+
+		if (hasEditingClass) {
+			return true;
+		}
+
+		// Default to reading mode
+		return false;
+	}
+
+	/**
+	 * Process GLSL blocks in reading mode (CodeBlockProcessor)
+	 */
+	private processGLSLBlockReadingMode(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+		// Mark as processed to avoid PostProcessor duplication
+		el.setAttribute('data-glsl-processed', 'true');
+
+		// Parse shader config from comments
+		const config = this.parseShaderConfig(source);
+
+		// Clean up any existing GLSL viewer in this element
+		this.cleanupExistingViewer(el);
+
+		// Create viewer container inside el
+		const viewerContainer = new ViewerContainer(config, el);
+
+		// Extract actual shader code (remove config comments)
+		const shaderCode = this.extractShaderCode(source);
+
+		// Create GLSL viewer
+		this.createGLSLViewer(viewerContainer, shaderCode, config);
+
+		// In reading mode, create a clean code block display
+		const cleanCode = this.extractShaderCode(source);
+
+		// Create code block element
+		const codeBlockContainer = document.createElement('div');
+		codeBlockContainer.className = 'glsl-clean-code-container';
+
+		const preElement = document.createElement('pre');
+		const codeElement = document.createElement('code');
+		codeElement.className = 'language-glsl';
+		codeElement.textContent = cleanCode;
+		preElement.appendChild(codeElement);
+		preElement.classList.add('glsl-code-with-viewer');
+		codeBlockContainer.appendChild(preElement);
+
+		// Add to container
+		el.appendChild(codeBlockContainer);
+
+		// Hide code block if requested
+		if (config.hideCode) {
+			codeBlockContainer.classList.add('glsl-viewer-hidden');
+		}
+	}
+
+	/**
+	 * Process GLSL blocks in edit mode (CodeBlockProcessor)
+	 */
+	private processGLSLBlockEditMode(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+		// Mark as processed to avoid PostProcessor duplication
+		el.setAttribute('data-glsl-processed', 'true');
+
+		// Parse shader config from comments
+		const config = this.parseShaderConfig(source);
+
+		// Clean up any existing GLSL viewer in this element
+		this.cleanupExistingViewer(el);
+
+		// In edit mode, create viewer inside el (the CodeBlockProcessor container)
+		const viewerContainer = new ViewerContainer(config, el);
+
+		// Extract actual shader code (remove config comments)
+		const shaderCode = this.extractShaderCode(source);
+
+		// Create GLSL viewer
+		this.createGLSLViewer(viewerContainer, shaderCode, config);
+
+		// In edit mode, also create a clean code block display
+		const cleanCode = this.extractShaderCode(source);
+
+		// Create simple code block element
+		const codeBlockContainer = document.createElement('div');
+		codeBlockContainer.className = 'glsl-clean-code-container glsl-edit-mode-code';
+
+		const preElement = document.createElement('pre');
+		const codeElement = document.createElement('code');
+		codeElement.className = 'language-glsl';
+		codeElement.textContent = cleanCode;
+		preElement.appendChild(codeElement);
+		preElement.classList.add('glsl-code-with-viewer');
+		codeBlockContainer.appendChild(preElement);
+
+		// Add to container
+		el.appendChild(codeBlockContainer);
+
+		// Adjust viewer container margin for edit mode
+		const viewerContainerEl = el.querySelector('.glsl-viewer-container');
+		if (viewerContainerEl) {
+			viewerContainerEl.classList.add('glsl-viewer-edit-mode');
+		}
+
+		// Hide code block if requested
+		if (config.hideCode) {
+			codeBlockContainer.classList.add('glsl-viewer-hidden');
 		}
 	}
 }

@@ -1,5 +1,5 @@
 import { ShaderConfig } from '../types/shader-config';
-import { getSVGIcon } from '../utils/icons';
+import { createSVGIconElement } from '../utils/icons';
 
 export class ViewerContainer {
 	private container: HTMLElement;
@@ -10,44 +10,38 @@ export class ViewerContainer {
 	private playOverlay: HTMLButtonElement | null = null;
 
 	constructor(config: ShaderConfig, parentEl: HTMLElement) {
-		this.container = this.createContainer(parentEl);
+		this.container = this.createContainer(parentEl, config);
 		this.placeholder = this.createPlaceholder(config);
 		this.canvas = this.createCanvas(config);
 		this.controls = this.createControls();
 		this.createPlayElements(config);
 	}
 
-	private createContainer(parentEl: HTMLElement): HTMLElement {
+	private createContainer(parentEl: HTMLElement, config: ShaderConfig): HTMLElement {
 		const container = document.createElement('div');
 		container.className = 'glsl-viewer-container';
-		container.style.position = 'relative'; // Enable absolute positioning for children
+		// CSS変数でアスペクト比を設定
+		container.style.setProperty('--aspect-ratio', config.aspect.toString());
 		parentEl.appendChild(container);
 		return container;
 	}
 
 	private createPlaceholder(config: ShaderConfig): HTMLElement {
 		const placeholder = document.createElement('div');
-		placeholder.className = 'glsl-viewer-placeholder';
-		placeholder.style.width = '100%';
-		placeholder.style.aspectRatio = (1 / config.aspect).toString();
-		placeholder.style.backgroundColor = '#000';
-		placeholder.style.display = config.autoplay ? 'none' : 'block';
+		placeholder.className = `glsl-viewer-placeholder${config.autoplay ? '' : ' visible'}`;
 		this.container.appendChild(placeholder);
 		return placeholder;
 	}
 
 	private createCanvas(config: ShaderConfig): HTMLCanvasElement {
 		const canvas = document.createElement('canvas');
-		canvas.className = 'glsl-viewer-canvas';
+		canvas.className = `glsl-viewer-canvas${config.autoplay ? '' : ' hidden'}`;
 
 		// Calculate canvas resolution based on aspect ratio
 		const baseResolution = 800; // Base width resolution
 		canvas.width = baseResolution;
 		canvas.height = Math.round(baseResolution * config.aspect);
 
-		canvas.style.width = '100%';
-		canvas.style.aspectRatio = (1 / config.aspect).toString();
-		canvas.style.display = config.autoplay ? 'block' : 'none'; // Show canvas only when autoplay
 		this.container.appendChild(canvas);
 		return canvas;
 	}
@@ -62,16 +56,20 @@ export class ViewerContainer {
 	private createPlayElements(config: ShaderConfig) {
 		// Create pause-only button (only shown when playing)
 		this.playButton = document.createElement('button');
-		this.playButton.className = 'glsl-viewer-button';
-		this.playButton.innerHTML = getSVGIcon('pause');
-		this.playButton.style.display = config.autoplay ? 'block' : 'none'; // Only show when playing
+		this.playButton.className = `glsl-viewer-button${config.autoplay ? ' visible' : ''}`;
+		const pauseIcon = createSVGIconElement('pause');
+		if (pauseIcon) {
+			this.playButton.appendChild(pauseIcon);
+		}
 		this.controls.appendChild(this.playButton);
 
 		// Create play overlay (always create, but only show initially if not autoplay)
 		this.playOverlay = document.createElement('button');
-		this.playOverlay.className = 'glsl-viewer-play-overlay';
-		this.playOverlay.innerHTML = getSVGIcon('play');
-		this.playOverlay.style.display = config.autoplay ? 'none' : 'flex';
+		this.playOverlay.className = `glsl-viewer-play-overlay${config.autoplay ? ' hidden' : ''}`;
+		const playIcon = createSVGIconElement('play');
+		if (playIcon) {
+			this.playOverlay.appendChild(playIcon);
+		}
 		this.container.appendChild(this.playOverlay);
 	}
 
@@ -98,48 +96,61 @@ export class ViewerContainer {
 
 	// Utility methods for UI state management
 	showCanvas() {
-		this.canvas.style.display = 'block';
+		this.canvas.classList.remove('hidden');
 	}
 
 	hideCanvas() {
-		this.canvas.style.display = 'none';
+		this.canvas.classList.add('hidden');
 	}
 
 	showPlaceholder() {
-		this.placeholder.style.display = 'block';
+		this.placeholder.classList.add('visible');
 	}
 
 	hidePlaceholder() {
-		this.placeholder.style.display = 'none';
+		this.placeholder.classList.remove('visible');
 	}
 
 	showPlayOverlay() {
 		if (this.playOverlay) {
-			this.playOverlay.style.display = 'flex';
+			this.playOverlay.classList.remove('hidden');
 		}
 	}
 
 	hidePlayOverlay() {
 		if (this.playOverlay) {
-			this.playOverlay.style.display = 'none';
+			this.playOverlay.classList.add('hidden');
 		}
 	}
 
 	showPlayButton() {
 		if (this.playButton) {
-			this.playButton.style.display = 'block';
+			this.playButton.classList.add('visible');
 		}
 	}
 
 	hidePlayButton() {
 		if (this.playButton) {
-			this.playButton.style.display = 'none';
+			this.playButton.classList.remove('visible');
 		}
 	}
 
 	updatePlayButtonIcon(icon: string) {
 		if (this.playButton) {
-			this.playButton.innerHTML = getSVGIcon(icon);
+			// Clear existing icon and add new one using DOM API
+			this.playButton.textContent = '';
+			const iconElement = createSVGIconElement(icon);
+			if (iconElement) {
+				this.playButton.appendChild(iconElement);
+			}
 		}
+	}
+
+	// Set thumbnail using CSS variables
+	setThumbnail(dataUrl: string) {
+		this.placeholder.style.setProperty('--thumbnail-image', `url(${dataUrl})`);
+		this.placeholder.style.setProperty('--thumbnail-size', 'cover');
+		this.placeholder.style.setProperty('--thumbnail-position', 'center');
+		this.placeholder.style.setProperty('--thumbnail-repeat', 'no-repeat');
 	}
 }

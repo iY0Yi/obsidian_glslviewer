@@ -5,15 +5,30 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ## Features
 
 - 📦 Shadertoy-compatible GLSL shader execution
-- 🎮 Play/pause controls
-- 🖼️ Texture loading (iChannel0-3)
-- ⚙️ Configurable canvas ratio
-- 🔧 In-code block configuration
+- 🎮 Play/pause controls with thumbnail generation
+- 🖼️ Texture loading (iChannel0-3) from your vault files
+- ⚙️ Configurable canvas ratio and autoplay
+- 🔧 Flexible configuration using comments in code blocks
 - 🎨 Template system for complex shader patterns
+- 🙈 **@hideCode**: Hide code blocks while keeping the viewer visible
+- 🎯 **Works with syntax highlighters**: No conflicts with other code plugins
 
 ## Demo
 
-![GLSL Viewer Demo](assets/imgs/short.gif)
+### Shadertoy Compatibility
+![Shadertoy compatibility](assets/imgs/demo_shadertoy.jpg)
+
+*Same syntax as Shadertoy - easily port your own creations and reuse code snippets between platforms*
+
+### Custom Textures
+![Custom Textures](assets/imgs/demo_textures.jpg)
+
+*Load any image from your vault as textures (iChannel0-3)*
+
+### Template System
+![Custom Template](assets/imgs/demo_template.jpg)
+
+*Use templates to simplify complex shaders - write minimal code, get maximum results*
 
 ## Installation
 
@@ -23,6 +38,56 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ## Usage
 
 **Primary**: Create a code block with `glsl-viewer` language:
+
+**Alternative**: Use standard `glsl` code blocks with `@viewer` directive for syntax highlighting:
+
+**Benefits of using `glsl` blocks:**
+- ✅ **Syntax highlighting** in edit mode
+- ✅ **Editor support** with GLSL syntax
+- ✅ **Viewer mode** with `@viewer` directive only
+
+**Comment Styles:**
+
+**Single-line comments:**
+````markdown
+```glsl
+// @viewer
+// @aspect: 0.75
+// @autoplay: true
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord / iResolution.xy;
+    vec3 col = 0.5 + 0.5 * cos(iTime + uv.xxy + vec3(0, 2, 4));
+    fragColor = vec4(col, 1.0);
+}
+```
+````
+
+**Multi-line comments** (cleaner for multiple directives):
+````markdown
+```glsl
+/*
+@viewer
+@aspect: 0.75
+@autoplay: true
+@hideCode: true
+@iChannel0: assets/texture.png
+*/
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord / iResolution.xy;
+    vec3 col = 0.5 + 0.5 * cos(iTime + uv.xxy + vec3(0, 2, 4));
+    fragColor = vec4(col, 1.0);
+}
+```
+````
+
+**@hideCode Example** (shows only the viewer):
+````markdown
+```glsl
+// @viewer
+// @hideCode: true
+// Your shader code here - will be executed but not displayed
+```
+````
 
 ### Basic Example
 ````markdown
@@ -86,13 +151,17 @@ vec4 map(vec3 p) {
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| `@viewer` | Enable viewer for `glsl` code blocks | - |
 | `@aspect: number` | Canvas aspect ratio (height/width) | 0.5625 |
 | `@autoplay: true/false` | Auto-start animation | false |
+| `@hideCode: true/false` | Hide code block, show viewer only | false |
 | `@template: filename` | Use template from templates folder | - |
 | `@iChannel0: path` | Texture file path | - |
 | `@iChannel1: path` | Texture file path | - |
 | `@iChannel2: path` | Texture file path | - |
 | `@iChannel3: path` | Texture file path | - |
+
+**Note**: `@viewer` directive is required only for `glsl` code blocks. `glsl-viewer` blocks are always processed.
 
 ### Available Uniforms
 
@@ -106,10 +175,10 @@ vec4 map(vec3 p) {
 
 ## Technical Details
 
-- **Rendering**: Pure WebGL implementation (no external dependencies)
+- **Rendering**: Pure WebGL implementation
 - **Shader Type**: Fragment shaders only
 - **Entry Point**: `mainImage(out vec4 fragColor, in vec2 fragCoord)`
-- **Textures**: Obsidian vault files supported
+- **Textures**: Load images from anywhere in your vault
 - **Templates**: Custom templates with `@TEMPLATE_LINES` placeholder replacement
 - **Performance**: Configurable concurrent shader limit
 
@@ -157,3 +226,8 @@ MIT License
 ## Compatibility
 
 - **Obsidian**: v1.0.0+
+- **Works with other plugins**:
+  - ✅ **Shiki-highlighter**: Syntax highlighting works perfectly
+  - ✅ **Expressive Code**: No layout conflicts
+  - ✅ **Other code plugins**: No interference with existing functionality
+- **Browser Support**: Modern browsers with WebGL support
