@@ -27,7 +27,7 @@ export class TextureManager {
 					}
 				}
 			} catch (error) {
-				console.warn(`Failed to resolve vault path: ${imagePath}`, error);
+				// Failed to resolve vault path, use original
 			}
 
 			img.onload = () => {
@@ -54,7 +54,6 @@ export class TextureManager {
 			};
 
 			img.onerror = () => {
-				console.warn(`Failed to load texture: ${resolvedPath} (original: ${imagePath})`);
 				resolve(false);
 			};
 

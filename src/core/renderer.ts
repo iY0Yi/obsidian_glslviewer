@@ -56,8 +56,6 @@ export class GLSLRenderer {
 		this.textureManager = new TextureManager(this.gl, this.app);
 		this.shaderCompiler = new ShaderCompiler(this.gl, this.isWebGL2);
 
-		console.log(`GLSL Viewer: Using ${this.isWebGL2 ? 'WebGL2' : 'WebGL1'}`);
-
 		// Set up mouse tracking
 		this.setupMouseTracking();
 
@@ -270,7 +268,6 @@ export class GLSLRenderer {
 	 */
 	async captureFrame(quality: number = 0.8): Promise<Blob | null> {
 		if (!this.program) {
-			console.error('GLSL Viewer: Cannot capture frame - no program loaded');
 			return null;
 		}
 
@@ -285,7 +282,6 @@ export class GLSLRenderer {
 				}, 'image/jpeg', quality);
 			});
 		} catch (error) {
-			console.error('GLSL Viewer: Error capturing frame:', error);
 			return null;
 		}
 	}
@@ -298,7 +294,6 @@ export class GLSLRenderer {
 	 */
 	async captureAtTime(timeSeconds: number = 1.0, quality: number = 0.8): Promise<Blob | null> {
 		if (!this.program) {
-			console.error('GLSL Viewer: Cannot capture at time - no program loaded');
 			return null;
 		}
 
@@ -313,7 +308,6 @@ export class GLSLRenderer {
 				}, 'image/jpeg', quality);
 			});
 		} catch (error) {
-			console.error('GLSL Viewer: Error capturing at time:', error);
 			return null;
 		}
 	}
@@ -381,7 +375,6 @@ export class GLSLRenderer {
 		// Remove from active viewers list (check if plugin still exists)
 		if (this.plugin && this.plugin.activeViewers) {
 			this.plugin.activeViewers.delete(this);
-			console.log(`GLSL Viewer: Removed viewer, remaining in Set: ${this.plugin.activeViewers.size}`);
 		}
 	}
 }
