@@ -1,7 +1,7 @@
 ﻿# GLSL Viewer Plugin for Obsidian
 
 A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering with Shadertoy-style shader code.
-
+</br></br></br>
 ## Features
 
 
@@ -26,12 +26,12 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 - 🔧 Flexible configuration using comments in code blocks
 - 🙈 **@hideCode**: Show only the viewer or with code
 - 🎯 **Works with syntax highlighters**: No conflicts with other code plugins (Shiki Highlighter)
-
+</br></br></br>
 ## Installation
 
 1. Copy this plugin to your Obsidian plugins folder
 2. Enable the plugin in Obsidian settings
-
+</br></br></br>
 ## Usage
 Use standard `glsl` code blocks with `@viewer` directive for syntax highlighting:
 
@@ -123,7 +123,7 @@ vec4 map(vec3 p) {
 |-----------|---------|-------------|
 | **Vault-relative** | `images/texture.jpg` | Relative to vault root |
 | **Subfolder** | `assets/textures/noise.png` | Files in subfolders |
-
+</br></br></br>
 ## Configuration Options
 
 ### Comment Settings
@@ -151,7 +151,7 @@ vec4 map(vec3 p) {
 - `vec4 iMouse` - Mouse position (Shadertoy-compatible) ✅
 - `vec4 iDate` - Date info (year, month, day, seconds) ✅
 - `sampler2D iChannel0-3` - Textures ✅
-
+</br></br></br>
 ## Technical Details
 
 - **Rendering**: Pure WebGL implementation
@@ -189,7 +189,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Full raymarching pipeline
 }
 ```
-
+</br></br></br>
 ## Development
 
 ```bash
@@ -197,11 +197,11 @@ npm install
 npm run dev    # Development mode
 npm run build  # Production build
 ```
-
+</br></br></br>
 ## License
 
 MIT License
-
+</br></br></br>
 ## Compatibility
 
 - **Obsidian**: v1.0.0+
