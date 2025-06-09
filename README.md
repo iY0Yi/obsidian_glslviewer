@@ -13,7 +13,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ### Custom Textures
 ![Custom Textures](assets/imgs/demo_textures.jpg)
 
-*Load any image from your vault as textures (iChannel0-3)*
+*Load images from your vault as textures (iChannel0-3)*
 
 ### Template System
 ![Custom Template](assets/imgs/demo_template.jpg)
