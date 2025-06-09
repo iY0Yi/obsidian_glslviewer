@@ -4,14 +4,14 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 
 ## Features
 
-- 📦 Shadertoy-compatible GLSL shader execution
-- 🎮 Play/pause controls with thumbnail generation
+- 📦 Shadertoy-compatible (*limited)
+- 📸 thumbnail generation
 - 🖼️ Texture loading (iChannel0-3) from your vault files
-- ⚙️ Configurable canvas ratio and autoplay
+- ⚙️ Configurable canvas ratio, autoplay
 - 🔧 Flexible configuration using comments in code blocks
 - 🎨 Template system for complex shader patterns
-- 🙈 **@hideCode**: Hide code blocks while keeping the viewer visible
-- 🎯 **Works with syntax highlighters**: No conflicts with other code plugins
+- 🙈 **@hideCode**: Show only the viewer or with code
+- 🎯 **Works with syntax highlighters**: No conflicts with other code plugins (Shiki Highlighter)
 
 ## Demo
 
@@ -38,12 +38,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ## Usage
 Use standard `glsl` code blocks with `@viewer` directive for syntax highlighting:
 
-**Benefits of using `glsl` blocks:**
-- ✅ **Syntax highlighting** in edit mode
-- ✅ **Editor support** with GLSL syntax
-- ✅ **Viewer mode** with `@viewer` directive only
-
-**Comment Styles:**
+### **Comment Styles:**
 
 **Single-line comments:**
 ````glsl
@@ -59,7 +54,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ```
 ````
 
-**Multi-line comments** (cleaner for multiple directives):
+**Multi-line comments**:
 ````glsl
 ```glsl
 /*
@@ -74,15 +69,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec3 col = 0.5 + 0.5 * cos(iTime + uv.xxy + vec3(0, 2, 4));
     fragColor = vec4(col, 1.0);
 }
-```
-````
-
-**@hideCode Example** (shows only the viewer):
-````glsl
-```glsl
-// @viewer
-// @hideCode: true
-// Your shader code here - will be executed but not displayed
 ```
 ````
 
@@ -106,6 +92,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 // @aspect: 1.0
 // @autoplay: true
 // @iChannel0: assets/images/texture.jpg
+// @hideCode: true
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = (fragCoord-iResolution.xy*.5) / iResolution.y;
     uv+=vec2(sin(iTime),cos(iTime));
@@ -118,25 +105,20 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
 ### Template Example
 
-Templates enable complex shader patterns with minimal code. Create custom templates in `.obsidian/plugins/glsl-viewer/templates/`:
+Templates enable complex shader patterns with minimal code.</br>
+Create custom templates in `.obsidian/plugins/glsl-viewer/templates/`.</br>
+Share complex setups across multiple shaders.
 
 ````glsl
 ```glsl
 // @viewer
 // @template: raymarching.glsl
-// @autoplay: false
-
 vec4 map(vec3 p) {
     float d = length(p) - 0.5;  // Sphere distance function
     return vec4(d, COL_S2);     // Return distance and material color
 }
 ```
 ````
-
-**Template Benefits:**
-- **Minimal code**: Write only the essential function (e.g., `map` for raymarching)
-- **Reusable**: Share complex setups across multiple shaders
-- **Customizable**: Create your own templates with `@TEMPLATE_LINES` placeholder
 
 ### Texture Path Formats
 
@@ -226,8 +208,4 @@ MIT License
 ## Compatibility
 
 - **Obsidian**: v1.0.0+
-- **Works with other plugins**:
-  - ✅ **Shiki-highlighter**: Syntax highlighting works perfectly
-  - ✅ **Expressive Code**: No layout conflicts
-  - ✅ **Other code plugins**: No interference with existing functionality
-- **Browser Support**: Modern browsers with WebGL support
+- **Shiki-highlighter**
