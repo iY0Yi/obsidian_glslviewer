@@ -4,18 +4,8 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 
 ## Features
 
-- 📦 Shadertoy-compatible (*limited)
-- 📸 thumbnail generation
-- 🖼️ Texture loading (iChannel0-3) from your vault files
-- ⚙️ Configurable canvas ratio, autoplay
-- 🔧 Flexible configuration using comments in code blocks
-- 🎨 Template system for complex shader patterns
-- 🙈 **@hideCode**: Show only the viewer or with code
-- 🎯 **Works with syntax highlighters**: No conflicts with other code plugins (Shiki Highlighter)
 
-## Demo
-
-### Shadertoy Compatibility
+### Shadertoy Compatibility  _*limited_
 ![Shadertoy compatibility](assets/imgs/demo_shadertoy.jpg)
 
 *Same syntax as Shadertoy - easily port your own creations and reuse code snippets between platforms*
@@ -29,6 +19,13 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ![Custom Template](assets/imgs/demo_template.jpg)
 
 *Use templates to simplify complex shaders - write minimal code, get maximum results*
+
+### And more
+- 📸 thumbnail generation
+- ⚙️ Configurable canvas ratio, autoplay
+- 🔧 Flexible configuration using comments in code blocks
+- 🙈 **@hideCode**: Show only the viewer or with code
+- 🎯 **Works with syntax highlighters**: No conflicts with other code plugins (Shiki Highlighter)
 
 ## Installation
 
