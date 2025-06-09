@@ -44,7 +44,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 					this.processGLSLBlockEditMode(source, el, ctx);
 				} else {
 					this.processGLSLBlockReadingMode(source, el, ctx);
-				}
+		}
 			}
 		});
 
@@ -71,7 +71,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		await this.saveData(this.settings);
 	}
 
-	/**
+		/**
 	 * Generate thumbnail for non-autoplay viewers if needed
 	 */
 	private async generateThumbnailIfNeeded(shaderCode: string, glslRenderer: GLSLRenderer, viewerContainer: ViewerContainer, config: ShaderConfig) {
