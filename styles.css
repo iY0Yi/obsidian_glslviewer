@@ -1,5 +1,176 @@
 /* GLSL Viewer Plugin Styles */
 
+/* Image file suggestion modal styles */
+.image-file-suggestion {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 12px;
+}
+
+.image-file-thumbnail {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.image-thumbnail-placeholder {
+  font-size: 24px;
+  color: var(--text-muted);
+}
+
+.image-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.image-file-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-file-path {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-file-size {
+  color: var(--text-faint);
+  font-size: 0.8em;
+}
+
+/* Folder suggestion modal styles */
+.folder-suggestion {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 12px;
+}
+
+.folder-icon {
+  flex-shrink: 0;
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.folder-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-stats {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+/* Texture shortcuts styles */
+.texture-shortcuts-container {
+  margin-bottom: 16px;
+}
+
+.texture-shortcut-item {
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.texture-shortcut-item .setting-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border: none;
+}
+
+.texture-shortcut-item .setting-item-info {
+  display: none;
+}
+
+.texture-shortcut-item .setting-item-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+  margin-left: 0;
+}
+
+.texture-shortcut-item .setting-item-control input {
+  min-width: 0;
+}
+
+.shortcut-key-input {
+  width: 100px !important;
+}
+
+.shortcut-path-input {
+  flex-grow: 1 !important;
+  margin-left: 8px !important;
+}
+
+.add-shortcut-container {
+  text-align: right;
+  margin-bottom: 16px;
+}
+
+.add-shortcut-container .setting-item {
+  border: none;
+  padding: 0;
+}
+
+.add-shortcut-container .setting-item-control {
+  justify-content: flex-end;
+}
+
+/* Settings divider */
+.glsl-settings-divider {
+  margin: 16px 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Remove extra margin from h4 elements in settings */
+.vertical-tab-content h4 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+/* Reduce margin for description elements under h4 */
+.vertical-tab-content h4 + .setting-item-description {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
 .glsl-viewer-container {
   position: relative;
   margin: 1em 0 0 0; /* 上部にマージンを追加、下部は0 */

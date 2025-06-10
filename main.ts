@@ -192,8 +192,8 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 	private parseShaderConfig(source: string): ShaderConfig {
 		const config: ShaderConfig = {
 			aspect: this.settings.defaultAspect,
-			autoplay: false,
-			hideCode: false,
+			autoplay: this.settings.defaultAutoplay,
+			hideCode: this.settings.defaultHideCode,
 			iChannel0: this.settings.defaultIChannel0 || undefined,
 			iChannel1: this.settings.defaultIChannel1 || undefined,
 			iChannel2: this.settings.defaultIChannel2 || undefined,
@@ -247,14 +247,23 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		} else if (directive.startsWith('@template:')) {
 			config.template = directive.substring(10).trim();
 		} else if (directive.startsWith('@iChannel0:')) {
-			config.iChannel0 = directive.substring(11).trim();
+			config.iChannel0 = this.resolveTexturePath(directive.substring(11).trim());
 		} else if (directive.startsWith('@iChannel1:')) {
-			config.iChannel1 = directive.substring(11).trim();
+			config.iChannel1 = this.resolveTexturePath(directive.substring(11).trim());
 		} else if (directive.startsWith('@iChannel2:')) {
-			config.iChannel2 = directive.substring(11).trim();
+			config.iChannel2 = this.resolveTexturePath(directive.substring(11).trim());
 		} else if (directive.startsWith('@iChannel3:')) {
-			config.iChannel3 = directive.substring(11).trim();
+			config.iChannel3 = this.resolveTexturePath(directive.substring(11).trim());
 		}
+	}
+
+	/**
+	 * Resolve texture path from shortcut key or return original path
+	 */
+	private resolveTexturePath(pathOrKey: string): string {
+		// Check if it's a shortcut key
+		const shortcut = this.settings.textureShortcuts.find(s => s.key === pathOrKey);
+		return shortcut ? shortcut.path : pathOrKey;
 	}
 
 	private extractShaderCode(source: string): string {
