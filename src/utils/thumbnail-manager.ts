@@ -19,6 +19,7 @@ export class ThumbnailManager {
 		if (config) {
 			// Include settings that affect thumbnail appearance
 			hashInput += `|aspect:${config.aspect}`;
+			if (config.template) hashInput += `|template:${config.template}`;
 			if (config.iChannel0) hashInput += `|ch0:${config.iChannel0}`;
 			if (config.iChannel1) hashInput += `|ch1:${config.iChannel1}`;
 			if (config.iChannel2) hashInput += `|ch2:${config.iChannel2}`;
