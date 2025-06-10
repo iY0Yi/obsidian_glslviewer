@@ -8,7 +8,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ### Shadertoy Compatibility  _*limited_
 ![Shadertoy compatibility](assets/imgs/demo_shadertoy.jpg)
 
-*Same syntax as Shadertoy - easily port your own creations and reuse code snippets between platforms*
+*Same syntax as Shadertoy - easily port your creations and reuse code snippets between platforms*
 
 ### Custom Textures
 ![Custom Textures](assets/imgs/demo_textures.jpg)
@@ -35,7 +35,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ## Usage
 Use standard `glsl` code blocks with `@viewer` directive for syntax highlighting:
 
-### **Comment Styles:**
+### **Directive Styles:**
 
 **Single-line comments:**
 ````glsl
@@ -102,7 +102,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
 ### Template Example
 
-Templates enable complex shader patterns with minimal code.</br>
+Templates enable the creation of complex shader patterns with minimal code.</br>
 Create custom templates in `.obsidian/plugins/glsl-viewer/templates/`.</br>
 Share complex setups across multiple shaders.
 
