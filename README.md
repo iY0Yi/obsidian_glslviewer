@@ -5,7 +5,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ## Features
 
 
-### Shadertoy Compatibility  _*limited_
+### Shadertoy Compatibility  _(Limited)_
 ![Shadertoy compatibility](assets/imgs/demo_shadertoy.jpg)
 
 *Same syntax as Shadertoy - easily port your creations and reuse code snippets between platforms*
@@ -147,6 +147,35 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
 **Configure shortcuts in Settings → GLSL Viewer → Textures → Texture Shortcuts**
 
+### Texture Resolution Access
+
+Access texture dimensions using `iChannelResolution[channel]` uniform:</br>
+Each channel provides a `vec3` with (width, height, z_component).</br>
+**Note**: Only 2D textures are supported. The z component is always 1.0 for Shadertoy compatibility.
+
+````glsl
+```glsl
+// @viewer
+// @iChannel0: tex1
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord / iResolution.xy;
+
+    // Get texture resolution for iChannel0
+    vec3 texRes = iChannelResolution[0];
+    float texWidth = texRes.x;      // Texture width in pixels
+    float texHeight = texRes.y;     // Texture height in pixels
+    // texRes.z is always 1.0 (reserved for 3D textures, but only 2D supported)
+
+    // Calculate aspect ratio for UV scaling
+    float texAspect = texWidth / texHeight;
+    vec2 scaledUV = uv * (iResolution.xy / texRes.xy);
+    vec3 color = texture(iChannel0, scaledUV).rgb;
+
+    fragColor = vec4(color, 1.0);
+}
+```
+````
+
 </br></br></br>
 ## Configuration Options
 
@@ -175,6 +204,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 - `vec4 iMouse` - Mouse position (Shadertoy-compatible) ✅
 - `vec4 iDate` - Date info (year, month, day, seconds) ✅
 - `sampler2D iChannel0-3` - Textures ✅
+- `vec3 iChannelResolution[4]` - Texture resolutions (width, height, 1.0) ✅
 
 </br></br></br>
 

@@ -4,6 +4,7 @@ export class TextureManager {
 	private gl: WebGLRenderingContext;
 	private app: App;
 	private textures: { [key: string]: WebGLTexture } = {};
+	private textureResolutions: { [key: string]: [number, number, number] } = {};
 
 	constructor(gl: WebGLRenderingContext, app: App) {
 		this.gl = gl;
@@ -49,7 +50,13 @@ export class TextureManager {
 				this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 				this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
 
-				this.textures[`iChannel${channelIndex}`] = texture;
+				const channelName = `iChannel${channelIndex}`;
+				this.textures[channelName] = texture;
+
+				// Store texture resolution (width, height, depth)
+				// For 2D textures, depth is always 1.0 (3D textures would have actual depth)
+				this.textureResolutions[channelName] = [img.width, img.height, 1.0];
+
 				resolve(true);
 			};
 
@@ -85,11 +92,20 @@ export class TextureManager {
 		return { ...this.textures };
 	}
 
+	getTextureResolution(channelName: string): [number, number, number] {
+		return this.textureResolutions[channelName] || [0, 0, 0];
+	}
+
+	getAllTextureResolutions(): { [key: string]: [number, number, number] } {
+		return { ...this.textureResolutions };
+	}
+
 	destroy() {
 		// Clean up all textures
 		Object.values(this.textures).forEach(texture => {
 			this.gl.deleteTexture(texture);
 		});
 		this.textures = {};
+		this.textureResolutions = {};
 	}
 }

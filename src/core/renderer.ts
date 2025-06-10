@@ -172,6 +172,9 @@ export class GLSLRenderer {
 		this.uniforms.iChannel1 = gl.getUniformLocation(this.program, 'iChannel1')!;
 		this.uniforms.iChannel2 = gl.getUniformLocation(this.program, 'iChannel2')!;
 		this.uniforms.iChannel3 = gl.getUniformLocation(this.program, 'iChannel3')!;
+
+		// Texture resolution uniforms
+		this.uniforms.iChannelResolution = gl.getUniformLocation(this.program, 'iChannelResolution')!;
 	}
 
 	private setupGeometry() {
@@ -251,6 +254,9 @@ export class GLSLRenderer {
 		// Bind textures
 		this.textureManager.bindTextures(this.uniforms);
 
+		// Set texture resolutions
+		this.updateTextureResolutions();
+
 		// Draw
 		gl.clearColor(0, 0, 0, 1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
@@ -259,6 +265,20 @@ export class GLSLRenderer {
 
 	async loadTexture(channelIndex: number, imagePath: string): Promise<boolean> {
 		return this.textureManager.loadTexture(channelIndex, imagePath);
+	}
+
+	private updateTextureResolutions() {
+		if (!this.program || !this.uniforms.iChannelResolution) return;
+
+		// Create array for all channel resolutions [iChannel0, iChannel1, iChannel2, iChannel3]
+		const resolutions: number[] = [];
+		for (let i = 0; i < 4; i++) {
+			const resolution = this.textureManager.getTextureResolution(`iChannel${i}`);
+			resolutions.push(resolution[0], resolution[1], resolution[2]); // width, height, depth
+		}
+
+		// Send as vec3 array to shader
+		this.gl.uniform3fv(this.uniforms.iChannelResolution, resolutions);
 	}
 
 	/**
@@ -345,6 +365,9 @@ export class GLSLRenderer {
 
 		// Bind textures
 		this.textureManager.bindTextures(this.uniforms);
+
+		// Set texture resolutions
+		this.updateTextureResolutions();
 
 		// Draw
 		gl.clearColor(0, 0, 0, 1);
