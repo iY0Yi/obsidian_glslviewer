@@ -92,12 +92,12 @@
   font-size: 0.9em;
 }
 
-/* Texture shortcuts styles */
-.texture-shortcuts-container {
+/* Texture shortcuts styles - only for GLSL Viewer settings */
+.glsl-viewer-settings .texture-shortcuts-container {
   margin-bottom: 16px;
 }
 
-.texture-shortcut-item {
+.glsl-viewer-settings .texture-shortcut-item {
   margin-bottom: 8px;
   padding: 8px;
   border: 1px solid var(--background-modifier-border);
@@ -105,18 +105,18 @@
   background: var(--background-secondary);
 }
 
-.texture-shortcut-item .setting-item {
+.glsl-viewer-settings .texture-shortcut-item .setting-item {
   display: flex;
   align-items: center;
   padding: 8px;
   border: none;
 }
 
-.texture-shortcut-item .setting-item-info {
+.glsl-viewer-settings .texture-shortcut-item .setting-item-info {
   display: none;
 }
 
-.texture-shortcut-item .setting-item-control {
+.glsl-viewer-settings .texture-shortcut-item .setting-item-control {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -125,50 +125,140 @@
   margin-left: 0;
 }
 
-.texture-shortcut-item .setting-item-control input {
+.glsl-viewer-settings .texture-shortcut-item .setting-item-control input {
   min-width: 0;
 }
 
-.shortcut-key-input {
+.glsl-viewer-settings .texture-shortcut-item .setting-item-control button {
+  flex-shrink: 0;
+  margin-left: 0;
+}
+
+.glsl-viewer-settings .shortcut-key-input {
   width: 100px !important;
+  flex-shrink: 0;
 }
 
-.shortcut-path-input {
+.glsl-viewer-settings .shortcut-path-input {
   flex-grow: 1 !important;
-  margin-left: 8px !important;
+  margin-left: 0 !important;
 }
 
-.add-shortcut-container {
+.glsl-viewer-settings .add-shortcut-container {
   text-align: right;
   margin-bottom: 16px;
 }
 
-.add-shortcut-container .setting-item {
+.glsl-viewer-settings .add-shortcut-container .setting-item {
   border: none;
   padding: 0;
 }
 
-.add-shortcut-container .setting-item-control {
+.glsl-viewer-settings .add-shortcut-container .setting-item-control {
   justify-content: flex-end;
 }
 
-/* Settings divider */
-.glsl-settings-divider {
+/* Settings divider - only for GLSL Viewer settings */
+.glsl-viewer-settings .glsl-settings-divider {
   margin: 16px 0;
   border: none;
   border-top: 1px solid var(--background-modifier-border);
 }
 
-/* Remove extra margin from h4 elements in settings */
-.vertical-tab-content h4 {
+/* Settings button icon styles - only for GLSL Viewer settings */
+.glsl-viewer-settings .setting-item-control button svg {
+  width: 16px !important;
+  height: 16px !important;
+  margin-right: 6px !important;
+  vertical-align: middle !important;
+  flex-shrink: 0;
+}
+
+/* Icon-only buttons in GLSL Viewer settings only */
+.glsl-viewer-settings .setting-item-control button.icon-only {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+}
+
+.glsl-viewer-settings .setting-item-control button.icon-only svg {
+  margin: 0 !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Remove extra margin from h4 elements in GLSL Viewer settings */
+.glsl-viewer-settings .vertical-tab-content h4 {
   margin-top: 16px;
   margin-bottom: 8px;
 }
 
-/* Reduce margin for description elements under h4 */
-.vertical-tab-content h4 + .setting-item-description {
+/* Reduce margin for description elements under h4 in GLSL Viewer settings */
+.glsl-viewer-settings .vertical-tab-content h4 + .setting-item-description {
   margin-top: 4px;
   margin-bottom: 12px;
+}
+
+/* Setting item with placeholder needs relative positioning */
+.glsl-viewer-settings .setting-item.has-image-placeholder,
+.glsl-viewer-settings .texture-shortcut-item.has-image-placeholder {
+  position: relative;
+}
+
+/* Setting image placeholder styles - only for GLSL Viewer settings */
+.glsl-viewer-settings .setting-image-placeholder {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.glsl-viewer-settings .setting-thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.glsl-viewer-settings .setting-placeholder-icon {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.glsl-viewer-settings .setting-placeholder-icon svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* Adjust setting item layout to accommodate placeholder - only for GLSL Viewer settings */
+.glsl-viewer-settings .setting-item.has-image-placeholder .setting-item-info,
+.glsl-viewer-settings .texture-shortcut-item.has-image-placeholder .setting-item-info {
+  padding-left: 66px;
+}
+
+.glsl-viewer-settings .setting-item.has-image-placeholder .setting-item-control,
+.glsl-viewer-settings .texture-shortcut-item.has-image-placeholder .setting-item-control {
+  padding-left: 66px;
+}
+
+/* Special adjustment for texture shortcuts to align with gap spacing */
+.glsl-viewer-settings .texture-shortcut-item.has-image-placeholder .setting-item-control {
+  padding-left: 50px;
 }
 
 .glsl-viewer-container {

@@ -3,10 +3,12 @@ import { ShaderConfig } from '../types/shader-config';
 
 export class ThumbnailManager {
 	private app: App;
-	private thumbnailDir: string = '.obsidian/plugins/glsl-viewer/thumbnails';
+	private thumbnailDir: string;
 
 	constructor(app: App) {
 		this.app = app;
+		// Use Vault#configDir instead of hardcoded .obsidian
+		this.thumbnailDir = `${this.app.vault.configDir}/plugins/glsl-viewer/thumbnails`;
 	}
 
 	/**

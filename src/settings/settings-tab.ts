@@ -2,7 +2,9 @@ import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
 import { GLSLViewerSettings } from '../types/settings';
 import { ImageFileSuggestModal } from '../ui/file-suggest-modal';
 import { FolderSuggestModal } from '../ui/folder-suggest-modal';
+import { createSVGIconElement } from '../utils/icons';
 import type { Plugin } from 'obsidian';
+import { TFile } from 'obsidian';
 
 // Type for the plugin reference
 interface GLSLViewerPlugin extends Plugin {
@@ -18,9 +20,107 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	// Helper method to add icon to button
+	private addIconToButton(buttonEl: HTMLButtonElement, iconName: string): void {
+		const icon = createSVGIconElement(iconName);
+		if (icon) {
+			// Add icon-only class for styling
+			buttonEl.classList.add('icon-only');
+
+			// Clear any existing content and add icon
+			buttonEl.textContent = '';
+			buttonEl.appendChild(icon);
+		}
+	}
+
+	// Helper method to create image placeholder (always shown)
+	private createImagePlaceholder(container: HTMLElement, imagePath?: string): HTMLElement {
+		// Add class to container for styling
+		container.addClass('has-image-placeholder');
+
+		// Create placeholder container
+		const placeholderContainer = container.createDiv({ cls: 'setting-image-placeholder' });
+
+		if (imagePath && imagePath.trim()) {
+			// If image path is provided, try to load thumbnail
+			this.loadImageIntoPlaceholder(placeholderContainer, imagePath);
+		} else {
+			// Show default image icon
+			this.showDefaultImageIcon(placeholderContainer);
+		}
+
+		return placeholderContainer;
+	}
+
+	// Helper method to load image into placeholder
+	private async loadImageIntoPlaceholder(container: HTMLElement, imagePath: string): Promise<void> {
+		// Check if file exists using TFile
+		const file = this.app.vault.getAbstractFileByPath(imagePath);
+		if (!file || !(file instanceof TFile)) {
+			this.showDefaultImageIcon(container);
+			return;
+		}
+
+		try {
+			// Load image using Obsidian's vault API
+			const arrayBuffer = await this.app.vault.readBinary(file);
+			const blob = new Blob([arrayBuffer]);
+			const url = URL.createObjectURL(blob);
+
+			const thumbnail = container.createEl('img', { cls: 'setting-thumbnail-img' });
+			thumbnail.src = url;
+			thumbnail.onload = () => {
+				URL.revokeObjectURL(url);
+			};
+			thumbnail.onerror = () => {
+				URL.revokeObjectURL(url);
+				container.empty();
+				this.showDefaultImageIcon(container);
+			};
+		} catch (error) {
+			// Silently handle image loading errors to avoid polluting the console
+			// Only log in development mode if needed for debugging
+			if (process.env.NODE_ENV === 'development') {
+				console.warn('Failed to load thumbnail for:', imagePath, error);
+			}
+			container.empty();
+			this.showDefaultImageIcon(container);
+		}
+	}
+
+	// Helper method to show default image icon
+	private showDefaultImageIcon(container: HTMLElement): void {
+		const icon = createSVGIconElement('imagesmode');
+		if (icon) {
+			container.empty();
+			container.addClass('setting-placeholder-icon');
+			container.appendChild(icon);
+		}
+	}
+
+	// Helper method to refresh image placeholder
+	private async refreshImagePlaceholder(settingEl: HTMLElement, imagePath: string): Promise<void> {
+		// Find existing placeholder
+		const existingPlaceholder = settingEl.querySelector('.setting-image-placeholder');
+		if (existingPlaceholder) {
+			// Update the placeholder content
+			if (imagePath && imagePath.trim()) {
+				await this.loadImageIntoPlaceholder(existingPlaceholder as HTMLElement, imagePath);
+			} else {
+				this.showDefaultImageIcon(existingPlaceholder as HTMLElement);
+			}
+		} else {
+			// Create new placeholder if it doesn't exist
+			this.createImagePlaceholder(settingEl, imagePath);
+		}
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+
+		// Add specific class to limit CSS scope
+		containerEl.addClass('glsl-viewer-settings');
 
 		containerEl.createEl('h2', { text: 'GLSL Viewer Settings' });
 
@@ -42,20 +142,28 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					}
 				})
 			)
-			.addButton(button => button
-				.setButtonText('Reset')
-				.setTooltip('Reset to default (10)')
-				.onClick(async () => {
-					this.plugin.settings.maxActiveViewers = 10;
-					await this.plugin.saveSettings();
-					this.display(); // Refresh display
-				})
-			);
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Reset to default (10)')
+					.onClick(async () => {
+						this.plugin.settings.maxActiveViewers = 10;
+						await this.plugin.saveSettings();
+						this.display(); // Refresh display
+					});
 
-				// Display Settings Section
+				// Add refresh icon to reset button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'refresh');
+				}, 0);
+
+				return btn;
+			});
+
+		// Display Settings Section
 		containerEl.createEl('h3', { text: 'Display Settings' });
 
-				// Default Aspect Ratio setting
+		// Default Aspect Ratio setting
 		new Setting(containerEl)
 			.setName('Default Aspect Ratio')
 			.setDesc('Default height/width ratio for new GLSL viewers. Common values: 0.5625 (16:9), 0.75 (4:3), 1.0 (square), 1.777 (9:16). Range: 0.1-5.0')
@@ -70,15 +178,23 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					}
 				})
 			)
-			.addButton(button => button
-				.setButtonText('Reset')
-				.setTooltip('Reset to default 16:9 (0.5625)')
-				.onClick(async () => {
-					this.plugin.settings.defaultAspect = 0.5625;
-					await this.plugin.saveSettings();
-					this.display(); // Refresh display
-				})
-			);
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Reset to default 16:9 (0.5625)')
+					.onClick(async () => {
+						this.plugin.settings.defaultAspect = 0.5625;
+						await this.plugin.saveSettings();
+						this.display(); // Refresh display
+					});
+
+				// Add refresh icon to reset button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'refresh');
+				}, 0);
+
+				return btn;
+			});
 
 		// Default Autoplay setting
 		new Setting(containerEl)
@@ -101,7 +217,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.defaultHideCode = value;
 					await this.plugin.saveSettings();
-								})
+				})
 			);
 
 		// Textures Settings Section
@@ -129,28 +245,44 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			})
-			.addButton(button => button
-				.setButtonText('Browse')
-				.setTooltip('Browse for folder')
-				.onClick(() => {
-					const modal = new FolderSuggestModal(this.app, (selectedPath) => {
-						textureFolderTextComponent.setValue(selectedPath);
-						this.plugin.settings.textureFolder = selectedPath;
-						this.plugin.saveSettings();
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Browse for folder')
+					.onClick(() => {
+						const modal = new FolderSuggestModal(this.app, (selectedPath) => {
+							textureFolderTextComponent.setValue(selectedPath);
+							this.plugin.settings.textureFolder = selectedPath;
+							this.plugin.saveSettings();
+						});
+						modal.open();
 					});
-					modal.open();
-				})
-			)
-			.addButton(button => button
-				.setButtonText('×')
-				.setTooltip('Clear texture folder restriction')
-				.setWarning()
-				.onClick(async () => {
-					this.plugin.settings.textureFolder = '';
-					await this.plugin.saveSettings();
-					this.display(); // Refresh display
-				})
-			);
+
+				// Add folder open icon to browse button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'folder_open');
+				}, 0);
+
+				return btn;
+			})
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Clear texture folder restriction')
+					.setWarning()
+					.onClick(async () => {
+						this.plugin.settings.textureFolder = '';
+						await this.plugin.saveSettings();
+						this.display(); // Refresh display
+					});
+
+				// Add close icon to clear button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'close');
+				}, 0);
+
+				return btn;
+			});
 
 		// iChannels Default section
 		containerEl.createEl('h4', { text: 'iChannels Default' });
@@ -183,36 +315,63 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 							await this.plugin.saveSettings();
 							// Update description to show current status
 							setting.setDesc(`Default texture for iChannel${channelIndex}. ${value ? `Currently set: ${value.length > 40 ? value.substring(0, 40) + '...' : value}` : 'Not set'}`);
+							// Update placeholder
+							this.refreshImagePlaceholder(setting.settingEl, value);
 						});
 				})
-				.addButton(button => button
-					.setButtonText('Browse')
-					.setTooltip('Browse for image file')
-					.onClick(() => {
-						const modal = new ImageFileSuggestModal(this.app, (selectedPath) => {
-							textComponent.setValue(selectedPath);
-							this.plugin.settings[channelName] = selectedPath;
-							this.plugin.saveSettings();
-							// Update description to show current status
-							setting.setDesc(`Default texture for iChannel${channelIndex}. Currently set: ${selectedPath.length > 40 ? selectedPath.substring(0, 40) + '...' : selectedPath}`);
-						}, this.plugin.settings.textureFolder);
-						modal.open();
-					})
-				);
+												.addButton(button => {
+					const btn = button
+						.setButtonText('')
+						.setTooltip('Browse for image file')
+						.onClick(() => {
+							const modal = new ImageFileSuggestModal(this.app, (selectedPath) => {
+								textComponent.setValue(selectedPath);
+								this.plugin.settings[channelName] = selectedPath;
+								this.plugin.saveSettings();
+								// Update description to show current status
+								setting.setDesc(`Default texture for iChannel${channelIndex}. Currently set: ${selectedPath.length > 40 ? selectedPath.substring(0, 40) + '...' : selectedPath}`);
+								// Update placeholder
+								this.refreshImagePlaceholder(setting.settingEl, selectedPath);
+							}, this.plugin.settings.textureFolder);
+							modal.open();
+						});
+
+					// Add folder open icon to browse button
+					setTimeout(() => {
+						this.addIconToButton(btn.buttonEl, 'folder_open');
+					}, 0);
+
+					return btn;
+				});
 
 			// Add clear button if there's a value
 			if (defaultValue) {
-				setting.addButton(button => button
-					.setButtonText('×')
-					.setTooltip(`Clear iChannel${channelIndex} default`)
-					.setWarning()
-					.onClick(async () => {
-						this.plugin.settings[channelName] = '';
-						await this.plugin.saveSettings();
-						this.display(); // Refresh display
-					})
-				);
+												setting.addButton(button => {
+					const btn = button
+						.setButtonText('')
+						.setTooltip(`Clear iChannel${channelIndex} default`)
+						.setWarning()
+						.onClick(async () => {
+							this.plugin.settings[channelName] = '';
+							await this.plugin.saveSettings();
+							// Clear placeholder and refresh
+							this.refreshImagePlaceholder(setting.settingEl, '');
+							this.display(); // Refresh display
+						});
+
+					// Add close icon to clear button
+					setTimeout(() => {
+						this.addIconToButton(btn.buttonEl, 'close');
+					}, 0);
+
+					return btn;
+				});
 			}
+
+			// Add initial placeholder (always shown)
+			setTimeout(() => {
+				this.createImagePlaceholder(setting.settingEl, defaultValue);
+			}, 0);
 
 			return setting;
 		};
@@ -236,22 +395,30 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Add shortcut button
 		const addShortcutContainer = containerEl.createDiv({ cls: 'add-shortcut-container' });
-		new Setting(addShortcutContainer)
-			.addButton(button => button
-				.setButtonText('+ Add Shortcut')
-				.setTooltip('Add new texture shortcut')
-				.onClick(() => {
-					this.plugin.settings.textureShortcuts.push({ key: '', path: '' });
-					this.plugin.saveSettings();
-					this.renderTextureShortcuts(shortcutsContainer);
-				})
-			);
+				new Setting(addShortcutContainer)
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Add new texture shortcut')
+					.onClick(() => {
+						this.plugin.settings.textureShortcuts.push({ key: '', path: '' });
+						this.plugin.saveSettings();
+						this.renderTextureShortcuts(shortcutsContainer);
+					});
+
+				// Add plus icon to add shortcut button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'add');
+				}, 0);
+
+				return btn;
+			});
 	}
 
 	private renderTextureShortcuts(container: HTMLElement): void {
 		container.empty();
 
-				this.plugin.settings.textureShortcuts.forEach((shortcut, index) => {
+		this.plugin.settings.textureShortcuts.forEach((shortcut, index) => {
 			const shortcutEl = container.createDiv({ cls: 'texture-shortcut-item' });
 
 			let keyComponent: TextComponent;
@@ -276,34 +443,52 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 						.onChange(async (value) => {
 							this.plugin.settings.textureShortcuts[index].path = value;
 							await this.plugin.saveSettings();
+							// Update placeholder
+							this.refreshImagePlaceholder(shortcutEl, value);
 						});
 				})
-				.addButton(button => button
-					.setButtonText('Browse')
-					.setTooltip('Browse for texture file')
-					.onClick(() => {
-						const modal = new ImageFileSuggestModal(this.app, (selectedPath) => {
-							pathComponent.setValue(selectedPath);
-							this.plugin.settings.textureShortcuts[index].path = selectedPath;
-							this.plugin.saveSettings();
-						}, this.plugin.settings.textureFolder);
-						modal.open();
-					})
-				)
-				.addButton(button => button
-					.setButtonText('×')
-					.setTooltip('Remove shortcut')
-					.setWarning()
-					.onClick(async () => {
-						this.plugin.settings.textureShortcuts.splice(index, 1);
-						await this.plugin.saveSettings();
-						this.renderTextureShortcuts(container);
-					})
-				);
+								.addButton(button => {
+					const btn = button
+						.setButtonText('')
+						.setTooltip('Browse for texture file')
+						.onClick(() => {
+							const modal = new ImageFileSuggestModal(this.app, (selectedPath) => {
+								pathComponent.setValue(selectedPath);
+								this.plugin.settings.textureShortcuts[index].path = selectedPath;
+								this.plugin.saveSettings();
+								// Update placeholder
+								this.refreshImagePlaceholder(shortcutEl, selectedPath);
+							}, this.plugin.settings.textureFolder);
+							modal.open();
+						});
 
+					// Add folder open icon to browse button
+					setTimeout(() => {
+						this.addIconToButton(btn.buttonEl, 'folder_open');
+					}, 0);
 
+					return btn;
+				})
+								.addButton(button => {
+					const btn = button
+						.setButtonText('')
+						.setTooltip('Remove shortcut')
+						.setWarning()
+						.onClick(async () => {
+							this.plugin.settings.textureShortcuts.splice(index, 1);
+							await this.plugin.saveSettings();
+							this.renderTextureShortcuts(container);
+						});
 
-						// Add CSS classes and labels for better UX
+					// Add close icon to remove button
+					setTimeout(() => {
+						this.addIconToButton(btn.buttonEl, 'close');
+					}, 0);
+
+					return btn;
+				});
+
+			// Add CSS classes and labels for better UX
 			const controls = setting.controlEl;
 			const keyInput = controls.querySelector('.setting-item-control input:first-of-type') as HTMLInputElement;
 			const pathInput = controls.querySelector('.setting-item-control input:nth-of-type(2)') as HTMLInputElement;
@@ -316,6 +501,11 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				pathInput.addClass('shortcut-path-input');
 				pathInput.setAttribute('aria-label', 'Texture path');
 			}
+
+			// Add initial placeholder (always shown)
+			setTimeout(() => {
+				this.createImagePlaceholder(shortcutEl, shortcut.path);
+			}, 0);
 		});
 	}
 }
