@@ -112,37 +112,52 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		}
 	}
 
-	/**
-	 * Count active GLSL viewers by checking actual DOM elements
-	 */
-	private countActiveDOMViewers(): number {
-		// Count all .glsl-viewer-container elements in the document
-		const containers = document.querySelectorAll('.glsl-viewer-container');
-		return containers.length;
-	}
+
 
 	/**
 	 * Clean up any existing GLSL viewer in the given element
 	 */
 	private cleanupExistingViewer(el: HTMLElement) {
-		// Find existing GLSL viewer container
+		// Find existing GLSL viewer container in the element itself
 		const existingContainer = el.querySelector('.glsl-viewer-container');
 		if (existingContainer) {
-			// Find the canvas element
-			const canvas = existingContainer.querySelector('.glsl-viewer-canvas') as HTMLCanvasElement;
-			if (canvas) {
-				// Find and destroy the corresponding GLSLRenderer
-				for (const viewer of this.activeViewers) {
-					if (viewer.getCanvas() === canvas) {
-						viewer.destroy();
-						break;
-					}
+			this.destroyViewerContainer(existingContainer);
+		}
+
+		// Also check the parent element to catch mode-switching cases
+		// where the container might be in a sibling or parent element
+		const parentEl = el.parentElement;
+		if (parentEl) {
+			const siblingContainers = parentEl.querySelectorAll('.glsl-viewer-container');
+			siblingContainers.forEach(container => {
+				// Only destroy if it's in the same logical code block area
+				if (container.parentElement === parentEl) {
+					this.destroyViewerContainer(container);
 				}
-			}
-			// Remove the existing container from DOM
-			existingContainer.remove();
+			});
 		}
 	}
+
+	/**
+	 * Destroy a viewer container and its associated renderer
+	 */
+	private destroyViewerContainer(container: Element) {
+		// Find the canvas element
+		const canvas = container.querySelector('.glsl-viewer-canvas') as HTMLCanvasElement;
+		if (canvas) {
+			// Find and destroy the corresponding GLSLRenderer
+			for (const viewer of this.activeViewers) {
+				if (viewer.getCanvas() === canvas) {
+					viewer.destroy(); // This should remove from activeViewers
+					break;
+				}
+			}
+		}
+		// Remove the container from DOM
+		container.remove();
+	}
+
+
 
 	private async loadTextures(glslRenderer: GLSLRenderer, config: ShaderConfig) {
 		const texturePromises: Promise<boolean>[] = [];
@@ -301,10 +316,12 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 		try {
 			// Check if we've reached the maximum number of active viewers
-			// Use DOM-based counting for accurate resource limit enforcement
-			const currentViewerCount = this.countActiveDOMViewers();
-			if (currentViewerCount >= this.settings.maxActiveViewers) {
-				ErrorDisplay.createAndShow(container, 'Maximum number of active GLSL viewers reached');
+			// Count actual DOM elements for current state
+			// Allow double the configured limit to accommodate mode switching
+			const currentViewerCount = document.querySelectorAll('.glsl-viewer-container').length;
+			const effectiveLimit = this.settings.maxActiveViewers * 2;
+			if (currentViewerCount >= effectiveLimit) {
+				ErrorDisplay.createAndShow(container, `Maximum number of active GLSL viewers reached (${currentViewerCount}/${this.settings.maxActiveViewers})`);
 				return;
 			}
 
@@ -440,7 +457,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		// Parse shader config from comments
 		const config = this.parseShaderConfig(source);
 
-		// Clean up any existing GLSL viewer in this element
+				// Clean up any existing GLSL viewer in this element
 		this.cleanupExistingViewer(el);
 
 		// Create viewer container inside el
@@ -486,7 +503,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		// Parse shader config from comments
 		const config = this.parseShaderConfig(source);
 
-		// Clean up any existing GLSL viewer in this element
+				// Clean up any existing GLSL viewer in this element
 		this.cleanupExistingViewer(el);
 
 		// In edit mode, create viewer inside el (the CodeBlockProcessor container)
