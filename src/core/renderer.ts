@@ -33,6 +33,10 @@ export class GLSLRenderer {
 	private mouseOriY: number = 0;
 	private mouseIsDown: boolean = false;
 
+	// Store event listeners and observers for cleanup
+	private eventListeners: Array<{element: Element, event: string, handler: EventListener}> = [];
+	private domObserver: MutationObserver | null = null;
+
 	constructor(canvas: HTMLCanvasElement, app: App, plugin: RendererPlugin) {
 		this.canvas = canvas;
 		this.app = app;
@@ -63,6 +67,14 @@ export class GLSLRenderer {
 		this.setupDOMObserver();
 	}
 
+	/**
+	 * Add event listener and track it for cleanup
+	 */
+	private addTrackedEventListener(element: Element, event: string, handler: EventListener) {
+		element.addEventListener(event, handler);
+		this.eventListeners.push({element, event, handler});
+	}
+
 	private setupMouseTracking() {
 		const calcMouseX = (ev: MouseEvent): number => {
 			const rect = this.canvas.getBoundingClientRect();
@@ -80,18 +92,21 @@ export class GLSLRenderer {
 			       ev.clientY >= rect.top && ev.clientY <= rect.bottom;
 		};
 
-		this.canvas.addEventListener('mousedown', (ev) => {
-			if (ev.button === 2 || !onCanvas(ev)) return; // Skip right click or outside canvas
+		// Use tracked event listeners for proper cleanup
+		this.addTrackedEventListener(this.canvas, 'mousedown', (ev: Event) => {
+			const mouseEvent = ev as MouseEvent;
+			if (mouseEvent.button === 2 || !onCanvas(mouseEvent)) return; // Skip right click or outside canvas
 
 			this.mouseIsDown = true;
-			this.mouseOriX = calcMouseX(ev);
-			this.mouseOriY = calcMouseY(ev);
+			this.mouseOriX = calcMouseX(mouseEvent);
+			this.mouseOriY = calcMouseY(mouseEvent);
 			this.mousePosX = this.mouseOriX;
 			this.mousePosY = this.mouseOriY;
 		});
 
-		this.canvas.addEventListener('mouseup', (ev) => {
-			if (!onCanvas(ev)) return;
+		this.addTrackedEventListener(this.canvas, 'mouseup', (ev: Event) => {
+			const mouseEvent = ev as MouseEvent;
+			if (!onCanvas(mouseEvent)) return;
 
 			this.mouseIsDown = false;
 			// Make click origin negative when released (Shadertoy behavior)
@@ -99,20 +114,21 @@ export class GLSLRenderer {
 			this.mouseOriY = Math.abs(this.mouseOriY) * -1;
 		});
 
-		this.canvas.addEventListener('mousemove', (ev) => {
-			if (!onCanvas(ev)) return;
+		this.addTrackedEventListener(this.canvas, 'mousemove', (ev: Event) => {
+			const mouseEvent = ev as MouseEvent;
+			if (!onCanvas(mouseEvent)) return;
 
 			if (this.mouseIsDown) {
 				// Update position during drag
-				this.mousePosX = calcMouseX(ev);
-				this.mousePosY = calcMouseY(ev);
+				this.mousePosX = calcMouseX(mouseEvent);
+				this.mousePosY = calcMouseY(mouseEvent);
 				// Keep origin positive during drag
 				this.mouseOriX = Math.abs(this.mouseOriX);
 				this.mouseOriY = Math.abs(this.mouseOriY);
 			}
 		});
 
-		this.canvas.addEventListener('mouseleave', () => {
+		this.addTrackedEventListener(this.canvas, 'mouseleave', () => {
 			if (this.mouseIsDown) {
 				this.mouseIsDown = false;
 				this.mouseOriX = Math.abs(this.mouseOriX) * -1;
@@ -123,13 +139,12 @@ export class GLSLRenderer {
 
 	private setupDOMObserver() {
 		// Use MutationObserver to detect when canvas is removed from DOM
-		const observer = new MutationObserver((mutations) => {
+		this.domObserver = new MutationObserver((mutations) => {
 			mutations.forEach((mutation) => {
 				mutation.removedNodes.forEach((node) => {
 					if (node === this.canvas || (node as Element).contains?.(this.canvas)) {
 						// Canvas was removed from DOM, clean up
 						this.destroy();
-						observer.disconnect();
 					}
 				});
 			});
@@ -137,7 +152,7 @@ export class GLSLRenderer {
 
 		// Observe the parent container for child removals
 		if (this.canvas.parentNode) {
-			observer.observe(this.canvas.parentNode, { childList: true, subtree: true });
+			this.domObserver.observe(this.canvas.parentNode, { childList: true, subtree: true });
 		}
 	}
 
@@ -386,18 +401,43 @@ export class GLSLRenderer {
 		if (this.isDestroyed) return; // Prevent multiple calls
 		this.isDestroyed = true;
 
+		// Stop animation first
 		this.pause();
 
-		// Clean up textures
+		// Remove all tracked event listeners
+		this.eventListeners.forEach(({element, event, handler}) => {
+			element.removeEventListener(event, handler);
+		});
+		this.eventListeners = [];
+
+		// Disconnect DOM observer
+		if (this.domObserver) {
+			this.domObserver.disconnect();
+			this.domObserver = null;
+		}
+
+		// Clean up WebGL resources
 		this.textureManager.destroy();
 
 		if (this.program) {
 			this.gl.deleteProgram(this.program);
+			this.program = null;
 		}
+
+		// Clear uniforms references
+		this.uniforms = {};
 
 		// Remove from active viewers list (check if plugin still exists)
 		if (this.plugin && this.plugin.activeViewers) {
 			this.plugin.activeViewers.delete(this);
 		}
+
+		// Clear references to help with garbage collection
+		this.canvas = null as any;
+		this.gl = null as any;
+		this.textureManager = null as any;
+		this.shaderCompiler = null as any;
+		this.app = null as any;
+		this.plugin = null as any;
 	}
 }
