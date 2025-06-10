@@ -173,14 +173,19 @@
 
 .glsl-viewer-container {
   position: relative;
-  margin: 1em 0 0 0; /* 上部にマージンを追加、下部は0 */
+  margin: 1em 0 0 0;
   border: 0px solid var(--background-modifier-border);
   border-radius: 0px 0px 0 0;
   overflow: hidden;
   display: block;
   width: auto;
-  /* CSS変数でアスペクト比を制御 */
+  /* デフォルトのアスペクト比 */
   --aspect-ratio: 0.5625;
+  /* サムネイル関連のカスタムプロパティ */
+  --thumbnail-image: none;
+  --thumbnail-size: cover;
+  --thumbnail-position: center;
+  --thumbnail-repeat: no-repeat;
 }
 
 /* GLSLビューワーの後にあるコードブロックのマージンを調整 */
@@ -225,8 +230,6 @@ pre[style*="display: none"] {
   display: none !important;
   margin: 0 !important;
 }
-
-
 
 .glsl-viewer-canvas {
   display: block; /* デフォルトは表示 */
@@ -400,4 +403,42 @@ div:has(.glsl-viewer-container) .expressive-code,
 .block-language-glsl[data-glsl-processed] .expressive-code {
   margin-top: 0 !important;
   padding-top: 0 !important;
+}
+
+/* Lazy load placeholder styles */
+.glsl-lazy-load-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+}
+
+.glsl-lazy-load-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.glsl-lazy-load-message {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.glsl-lazy-load-subtitle {
+  font-size: 0.8em;
+  color: var(--text-faint);
+}
+
+.glsl-lazy-load-clickable {
+  cursor: pointer;
+}
+
+.glsl-lazy-load-clickable:hover .glsl-lazy-load-container {
+  color: var(--text-normal);
+}
+
+/* Image thumbnail utility class */
+.image-thumbnail-hidden {
+  display: none;
 }

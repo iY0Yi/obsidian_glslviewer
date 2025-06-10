@@ -111,7 +111,7 @@ export class ImageFileSuggestModal extends FuzzySuggestModal<ImageFile> {
 			imgElement.onerror = () => {
 				URL.revokeObjectURL(url);
 				// Show placeholder on error
-				imgElement.style.display = 'none';
+				imgElement.addClass('image-thumbnail-hidden');
 				const placeholder = imgElement.parentElement?.createDiv({ cls: 'image-thumbnail-placeholder' });
 				if (placeholder) {
 					placeholder.textContent = '🖼️';
@@ -119,7 +119,7 @@ export class ImageFileSuggestModal extends FuzzySuggestModal<ImageFile> {
 			};
 		} catch (error) {
 			// Show placeholder on error
-			imgElement.style.display = 'none';
+			imgElement.addClass('image-thumbnail-hidden');
 			const placeholder = imgElement.parentElement?.createDiv({ cls: 'image-thumbnail-placeholder' });
 			if (placeholder) {
 				placeholder.textContent = '🖼️';
