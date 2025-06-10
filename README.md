@@ -21,9 +21,11 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 *Use templates to simplify complex shaders - write minimal code, get maximum results*
 
 ### And more
-- 📸 thumbnail generation
-- ⚙️ Configurable canvas ratio, autoplay
+- 📸 Thumbnail generation for non-autoplay shaders
+- ⚙️ Configurable canvas ratio, autoplay, and code visibility
 - 🔧 Flexible configuration using comments in code blocks
+- 🎯 **Texture shortcuts**: Quick reference to frequently used textures
+- 📁 **Texture browser**: Visual texture selection with folder filtering
 - 🙈 **@hideCode**: Show only the viewer or with code
 - 🎯 **Works with syntax highlighters**: No conflicts with other code plugins (Shiki Highlighter)
 </br></br></br>
@@ -122,7 +124,28 @@ vec4 map(vec3 p) {
 | Path Type | Example | Description |
 |-----------|---------|-------------|
 | **Vault-relative** | `images/texture.jpg` | Relative to vault root |
-| **Subfolder** | `assets/textures/noise.png` | Files in subfolders |
+| **Shortcut Key** | `tex1` | Pre-configured texture shortcuts |
+
+### Texture Shortcuts
+
+Create shortcuts for frequently used textures in plugin settings.</br>
+Instead of typing full paths, use short keys:
+
+````glsl
+```glsl
+// @viewer
+// @iChannel0: tex1      // Uses shortcut 'tex1'
+// @iChannel1: noise     // Uses shortcut 'noise'
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord / iResolution.xy;
+    vec3 tex = texture(iChannel0, uv).rgb;    // 'tex1' texture
+    vec3 n = texture(iChannel1, uv).rgb;      // 'noise' texture
+    fragColor = vec4(mix(tex, n, 0.5), 1.0);
+}
+```
+````
+
+**Configure shortcuts in Settings → GLSL Viewer → Textures → Texture Shortcuts**
 
 </br></br></br>
 ## Configuration Options
@@ -168,9 +191,18 @@ vec4 map(vec3 p) {
 
 Access via Settings → Community plugins → GLSL Viewer:
 
+**Performance Settings:**
 - **Maximum Active Viewers**: Performance control (1-50)
+
+**Display Settings:**
 - **Default Aspect Ratio**: Canvas ratio for new shaders
-- **Default Textures**: Auto-loaded textures for iChannel0-3
+- **Default Autoplay**: Whether new shaders auto-start by default
+- **Default Hide Code**: Whether to hide code blocks by default
+
+**Textures:**
+- **Texture Folder**: Limit texture browsing to specific folder
+- **iChannels Default**: Auto-loaded textures for iChannel0-3
+- **Texture Shortcuts**: Create shortcuts for frequently used textures
 
 ### Creating Custom Templates
 
