@@ -4,15 +4,25 @@ import { GLSLRenderer } from '../core/renderer';
 
 export class ControlsManager {
 	private viewerContainer: ViewerContainer;
-	private glslRenderer: GLSLRenderer;
+	private glslRenderer: GLSLRenderer | null;
 	private config: ShaderConfig;
 	private isPlaying: boolean;
+	private shaderCode: string;
+	private onCreateRenderer?: (viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) => Promise<GLSLRenderer | null>;
 
-	constructor(viewerContainer: ViewerContainer, glslRenderer: GLSLRenderer, config: ShaderConfig) {
+	constructor(
+		viewerContainer: ViewerContainer,
+		glslRenderer: GLSLRenderer,
+		config: ShaderConfig,
+		shaderCode: string,
+		onCreateRenderer?: (viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) => Promise<GLSLRenderer | null>
+	) {
 		this.viewerContainer = viewerContainer;
 		this.glslRenderer = glslRenderer;
 		this.config = config;
+		this.shaderCode = shaderCode;
 		this.isPlaying = config.autoplay;
+		this.onCreateRenderer = onCreateRenderer;
 
 		this.setupEventListeners();
 		this.updatePlayButton();
@@ -20,32 +30,48 @@ export class ControlsManager {
 
 	private setupEventListeners() {
 		const playButton = this.viewerContainer.getPlayButton();
+		const stopButton = this.viewerContainer.getStopButton();
 		const playOverlay = this.viewerContainer.getPlayOverlay();
 
 		if (playButton) {
 			// Pause-only button (only pauses, doesn't resume)
 			playButton.addEventListener('click', () => {
-				if (this.isPlaying) {
+				if (this.isPlaying && this.glslRenderer) {
 					this.pause();
 				}
 			});
 		}
 
+		if (stopButton) {
+			// Stop button (stops and destroys renderer, returns to thumbnail)
+			stopButton.addEventListener('click', () => {
+				this.stop();
+			});
+		}
+
 		if (playOverlay) {
-			// Play-only overlay (only starts playback)
-			playOverlay.addEventListener('click', () => {
+			// Play-only overlay (starts playback)
+			playOverlay.addEventListener('click', async () => {
 				if (!this.isPlaying) {
-					this.play();
+					await this.play();
 				}
 			});
-
-			// Initial display state is already handled by CSS classes in ViewerContainer
-			// No need to manually set style.display here
 		}
 	}
 
-	private play() {
-		this.glslRenderer.play();
+	private async play() {
+		// レンダラーが存在しない場合（停止後など）は新しいレンダラーを作成
+		if (!this.glslRenderer && this.onCreateRenderer) {
+			this.glslRenderer = await this.onCreateRenderer(this.viewerContainer, this.shaderCode, this.config);
+			if (!this.glslRenderer) {
+				return; // レンダラー作成に失敗
+			}
+		}
+
+		if (this.glslRenderer) {
+			this.glslRenderer.play();
+		}
+
 		this.viewerContainer.hidePlayOverlay();
 
 		// Switch from placeholder to canvas (check if placeholder is visible)
@@ -60,7 +86,9 @@ export class ControlsManager {
 	}
 
 	private pause() {
-		this.glslRenderer.pause();
+		if (this.glslRenderer) {
+			this.glslRenderer.pause();
+		}
 		this.viewerContainer.showPlayOverlay();
 		this.isPlaying = false;
 		this.updatePlayButton();
@@ -73,18 +101,20 @@ export class ControlsManager {
 			this.viewerContainer.updatePlayButtonIcon('pause');
 			if (this.isPlaying) {
 				this.viewerContainer.showPlayButton();
+				this.viewerContainer.showStopButton();
 			} else {
 				this.viewerContainer.hidePlayButton();
+				this.viewerContainer.hideStopButton();
 			}
 		}
 	}
 
 	// Public methods for external control
-	public togglePlayPause() {
+	public async togglePlayPause() {
 		if (this.isPlaying) {
 			this.pause();
 		} else {
-			this.play();
+			await this.play();
 		}
 	}
 
@@ -93,11 +123,23 @@ export class ControlsManager {
 	}
 
 	public stop() {
-		if (this.isPlaying) {
-			this.pause();
+		// Stop playback
+		if (this.isPlaying && this.glslRenderer) {
+			this.glslRenderer.pause();
+			this.isPlaying = false;
 		}
-		// Reset to initial state
+
+		// Destroy the renderer to free WebGL context
+		if (this.glslRenderer) {
+			this.glslRenderer.destroy();
+			this.glslRenderer = null; // レンダラーへの参照をクリア
+		}
+
+		// Reset UI to initial state (thumbnail view)
+		this.viewerContainer.hidePlayButton();
+		this.viewerContainer.hideStopButton();
 		this.viewerContainer.hideCanvas();
 		this.viewerContainer.showPlaceholder();
+		this.viewerContainer.showPlayOverlay();
 	}
 }

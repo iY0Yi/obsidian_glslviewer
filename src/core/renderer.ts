@@ -11,19 +11,21 @@ export interface RendererPlugin {
 }
 
 export class GLSLRenderer {
-	private canvas: HTMLCanvasElement;
-	private gl: WebGLRenderingContext;
+	private canvas: HTMLCanvasElement | null;
+	private gl: WebGLRenderingContext | null;
 	private program: WebGLProgram | null = null;
 	private animationId: number | null = null;
-	private startTime: number = Date.now();
+	// フレームベースの時間管理
+	private currentTime: number = 0.0;
+	private readonly targetFPS: number = 60;
+	private readonly frameDelta: number = 1.0 / 60; // 1/60秒
 	private frameCount: number = 0;
-	private lastTime: number = 0;
 	private uniforms: { [key: string]: WebGLUniformLocation } = {};
-	private textureManager: TextureManager;
-	private shaderCompiler: ShaderCompiler;
-	private app: App;
+	private textureManager: TextureManager | null;
+	private shaderCompiler: ShaderCompiler | null;
+	private app: App | null;
 	public isWebGL2: boolean;
-	private plugin: RendererPlugin; // Reference to plugin for cleanup
+	private plugin: RendererPlugin | null; // Reference to plugin for cleanup
 	private isDestroyed: boolean = false; // Track if destroy has been called
 
 	// Mouse tracking (Shadertoy compatible)
@@ -76,17 +78,22 @@ export class GLSLRenderer {
 	}
 
 	private setupMouseTracking() {
+		if (!this.canvas) return;
+
 		const calcMouseX = (ev: MouseEvent): number => {
+			if (!this.canvas) return 0;
 			const rect = this.canvas.getBoundingClientRect();
 			return Math.floor(((ev.clientX - rect.left) / (rect.right - rect.left)) * this.canvas.width);
 		};
 
 		const calcMouseY = (ev: MouseEvent): number => {
+			if (!this.canvas) return 0;
 			const rect = this.canvas.getBoundingClientRect();
 			return Math.floor(this.canvas.height - ((ev.clientY - rect.top) / (rect.bottom - rect.top)) * this.canvas.height);
 		};
 
 		const onCanvas = (ev: MouseEvent): boolean => {
+			if (!this.canvas) return false;
 			const rect = this.canvas.getBoundingClientRect();
 			return ev.clientX >= rect.left && ev.clientX <= rect.right &&
 			       ev.clientY >= rect.top && ev.clientY <= rect.bottom;
@@ -138,6 +145,8 @@ export class GLSLRenderer {
 	}
 
 	private setupDOMObserver() {
+		if (!this.canvas) return;
+
 		// Use MutationObserver to detect when canvas is removed from DOM
 		this.domObserver = new MutationObserver((mutations) => {
 			mutations.forEach((mutation) => {
@@ -169,7 +178,7 @@ export class GLSLRenderer {
 	}
 
 	private setupUniforms() {
-		if (!this.program) return;
+		if (!this.program || !this.gl) return;
 
 		const gl = this.gl;
 		gl.useProgram(this.program);
@@ -193,6 +202,8 @@ export class GLSLRenderer {
 	}
 
 	private setupGeometry() {
+		if (!this.program || !this.gl) return;
+
 		const gl = this.gl;
 
 		// Create a full-screen quad
@@ -215,9 +226,13 @@ export class GLSLRenderer {
 
 	play() {
 		if (this.animationId) return;
-		this.startTime = Date.now();
-		this.lastTime = 0;
-		this.frameCount = 0;
+
+		// 初回再生時のみ時間をリセット
+		if (this.frameCount === 0) {
+			this.currentTime = 0.0;
+		}
+		// 一時停止からの再開時は何もしない（時間は続きから）
+
 		this.animate();
 	}
 
@@ -234,24 +249,23 @@ export class GLSLRenderer {
 	}
 
 	private render() {
-		if (!this.program) return;
+		if (!this.program || !this.gl) return;
 
 		const gl = this.gl;
 		gl.useProgram(this.program);
 
 		// Set viewport
+		if (!this.canvas) return;
 		gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 
-		// Update uniforms
-		const currentTime = (Date.now() - this.startTime) / 1000;
-		const timeDelta = currentTime - this.lastTime;
-		this.lastTime = currentTime;
+		// フレームベースの時間更新
+		this.currentTime += this.frameDelta;
 		this.frameCount++;
 
 		// Shadertoy standard uniforms
 		gl.uniform3f(this.uniforms.iResolution, this.canvas.width, this.canvas.height, 1.0);
-		gl.uniform1f(this.uniforms.iTime, currentTime);
-		gl.uniform1f(this.uniforms.iTimeDelta, timeDelta);
+		gl.uniform1f(this.uniforms.iTime, this.currentTime);
+		gl.uniform1f(this.uniforms.iTimeDelta, this.frameDelta);
 		gl.uniform1i(this.uniforms.iFrame, this.frameCount);
 
 		// Mouse position (Shadertoy compatible)
@@ -267,7 +281,9 @@ export class GLSLRenderer {
 		);
 
 		// Bind textures
-		this.textureManager.bindTextures(this.uniforms);
+		if (this.textureManager) {
+			this.textureManager.bindTextures(this.uniforms);
+		}
 
 		// Set texture resolutions
 		this.updateTextureResolutions();
@@ -279,11 +295,12 @@ export class GLSLRenderer {
 	}
 
 	async loadTexture(channelIndex: number, imagePath: string): Promise<boolean> {
+		if (!this.textureManager) return false;
 		return this.textureManager.loadTexture(channelIndex, imagePath);
 	}
 
 	private updateTextureResolutions() {
-		if (!this.program || !this.uniforms.iChannelResolution) return;
+		if (!this.program || !this.uniforms.iChannelResolution || !this.gl || !this.textureManager) return;
 
 		// Create array for all channel resolutions [iChannel0, iChannel1, iChannel2, iChannel3]
 		const resolutions: number[] = [];
@@ -302,7 +319,7 @@ export class GLSLRenderer {
 	 * @returns Promise that resolves to JPEG blob
 	 */
 	async captureFrame(quality: number = 0.8): Promise<Blob | null> {
-		if (!this.program) {
+		if (!this.program || !this.canvas) {
 			return null;
 		}
 
@@ -312,6 +329,10 @@ export class GLSLRenderer {
 
 			// Convert canvas to blob
 			return new Promise<Blob | null>((resolve) => {
+				if (!this.canvas) {
+					resolve(null);
+					return;
+				}
 				this.canvas.toBlob((blob) => {
 					resolve(blob);
 				}, 'image/jpeg', quality);
@@ -328,7 +349,7 @@ export class GLSLRenderer {
 	 * @returns Promise that resolves to JPEG blob
 	 */
 	async captureAtTime(timeSeconds: number = 1.0, quality: number = 0.8): Promise<Blob | null> {
-		if (!this.program) {
+		if (!this.program || !this.canvas) {
 			return null;
 		}
 
@@ -338,6 +359,10 @@ export class GLSLRenderer {
 
 			// Convert canvas to blob
 			return new Promise<Blob | null>((resolve) => {
+				if (!this.canvas) {
+					resolve(null);
+					return;
+				}
 				this.canvas.toBlob((blob) => {
 					resolve(blob);
 				}, 'image/jpeg', quality);
@@ -352,7 +377,7 @@ export class GLSLRenderer {
 	 * @param timeSeconds Time value for iTime uniform
 	 */
 	private renderAtTime(timeSeconds: number) {
-		if (!this.program) return;
+		if (!this.program || !this.gl || !this.canvas) return;
 
 		const gl = this.gl;
 		gl.useProgram(this.program);
@@ -379,7 +404,9 @@ export class GLSLRenderer {
 		);
 
 		// Bind textures
-		this.textureManager.bindTextures(this.uniforms);
+		if (this.textureManager) {
+			this.textureManager.bindTextures(this.uniforms);
+		}
 
 		// Set texture resolutions
 		this.updateTextureResolutions();
@@ -394,6 +421,9 @@ export class GLSLRenderer {
 	 * Get the canvas element for this renderer
 	 */
 	getCanvas(): HTMLCanvasElement {
+		if (!this.canvas) {
+			throw new Error('Canvas is not available (renderer destroyed)');
+		}
 		return this.canvas;
 	}
 
@@ -417,9 +447,11 @@ export class GLSLRenderer {
 		}
 
 		// Clean up WebGL resources
-		this.textureManager.destroy();
+		if (this.textureManager) {
+			this.textureManager.destroy();
+		}
 
-		if (this.program) {
+		if (this.program && this.gl) {
 			this.gl.deleteProgram(this.program);
 			this.program = null;
 		}
@@ -432,12 +464,12 @@ export class GLSLRenderer {
 			this.plugin.activeViewers.delete(this);
 		}
 
-		// Clear references to help with garbage collection
-		this.canvas = null as any;
-		this.gl = null as any;
-		this.textureManager = null as any;
-		this.shaderCompiler = null as any;
-		this.app = null as any;
-		this.plugin = null as any;
+		// Clear references to help with garbage collection (now type-safe)
+		this.canvas = null;
+		this.gl = null;
+		this.textureManager = null;
+		this.shaderCompiler = null;
+		this.app = null;
+		this.plugin = null;
 	}
 }

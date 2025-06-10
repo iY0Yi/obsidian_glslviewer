@@ -29,12 +29,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		// Add setting tab
 		this.addSettingTab(new GLSLViewerSettingTab(this.app, this));
 
-		// Process GLSL code blocks - using unique language name to avoid conflicts
-		this.registerMarkdownCodeBlockProcessor('glsl-viewer', (source, el, ctx) => {
-			this.processGLSLBlock(source, el, ctx);
-		});
-
-				// Process GLSL code blocks with @viewer directive
+		// Process GLSL code blocks with @viewer directive
 		this.registerMarkdownCodeBlockProcessor('glsl', (source, el, ctx) => {
 			// Check if we're in edit mode by looking at the document structure
 			const isEditMode = this.isInEditMode(el);
@@ -44,11 +39,12 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 					this.processGLSLBlockEditMode(source, el, ctx);
 				} else {
 					this.processGLSLBlockReadingMode(source, el, ctx);
-		}
+				}
+			} else {
+				// No @viewer directive found, create a normal code block manually
+				this.createNormalCodeBlock(source, el);
 			}
 		});
-
-
 	}
 
 	onunload() {
@@ -71,7 +67,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		await this.saveData(this.settings);
 	}
 
-		/**
+	/**
 	 * Generate thumbnail for non-autoplay viewers if needed
 	 */
 	private async generateThumbnailIfNeeded(shaderCode: string, glslRenderer: GLSLRenderer, viewerContainer: ViewerContainer, config: ShaderConfig) {
@@ -111,8 +107,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			// Silent handling - thumbnails are optional
 		}
 	}
-
-
 
 	/**
 	 * Clean up any existing GLSL viewer in the given element
@@ -157,8 +151,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		container.remove();
 	}
 
-
-
 	private async loadTextures(glslRenderer: GLSLRenderer, config: ShaderConfig) {
 		const texturePromises: Promise<boolean>[] = [];
 
@@ -177,31 +169,6 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 		// Wait for all textures to load (non-blocking, fails silently)
 		await Promise.all(texturePromises);
-	}
-
-	private processGLSLBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
-		// Parse shader config from comments
-		const config = this.parseShaderConfig(source);
-
-		// Clean up any existing GLSL viewer in this element
-		this.cleanupExistingViewer(el);
-
-		// Create viewer container
-		const viewerContainer = new ViewerContainer(config, el);
-
-		// Extract actual shader code (remove config comments)
-		const shaderCode = this.extractShaderCode(source);
-
-		// Create GLSL viewer
-		this.createGLSLViewer(viewerContainer, shaderCode, config);
-
-		// Hide original code block if requested
-		if (config.hideCode) {
-			const codeBlock = el.querySelector('code');
-			if (codeBlock) {
-				codeBlock.classList.add('glsl-viewer-hidden');
-			}
-		}
 	}
 
 	private parseShaderConfig(source: string): ShaderConfig {
@@ -315,10 +282,30 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		const container = viewerContainer.getContainer();
 
 		try {
-			// Check if we've reached the maximum number of active viewers
-			// Count actual DOM elements for current state
-			// Allow double the configured limit to accommodate mode switching
+			// For non-autoplay viewers, check if thumbnail already exists first
+			// This prevents unnecessary WebGL context creation
+			if (!config.autoplay) {
+				const thumbnailExists = await this.thumbnailManager.thumbnailExists(shaderCode, config);
+				if (thumbnailExists) {
+					// Display existing thumbnail and setup lazy loading
+					await this.displayThumbnail(shaderCode, viewerContainer, config);
+					this.setupLazyRenderer(viewerContainer, shaderCode, config);
+					return;
+				}
+			}
+
+			// Check WebGL context limit (more restrictive than viewer limit)
+			// Most browsers support 16-32 WebGL contexts maximum
 			const currentViewerCount = document.querySelectorAll('.glsl-viewer-container').length;
+			const webglContextLimit = Math.min(this.settings.maxActiveViewers, 16); // Conservative limit
+
+			if (currentViewerCount >= webglContextLimit && !config.autoplay) {
+				// For non-autoplay viewers, show placeholder without creating WebGL context
+				await this.createThumbnailOnlyViewer(viewerContainer, shaderCode, config);
+				return;
+			}
+
+			// Regular limit check for autoplay viewers
 			const effectiveLimit = this.settings.maxActiveViewers * 2;
 			if (currentViewerCount >= effectiveLimit) {
 				ErrorDisplay.createAndShow(container, `Maximum number of active GLSL viewers reached (${currentViewerCount}/${this.settings.maxActiveViewers})`);
@@ -353,8 +340,163 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			// Load textures if specified
 			await this.loadTextures(glslRenderer, config);
 
-			// Set up controls
-			new ControlsManager(viewerContainer, glslRenderer, config);
+			// Set up controls with renderer recreation callback
+			new ControlsManager(viewerContainer, glslRenderer, config, shaderCode, async (vc, sc, cfg) => {
+				return await this.recreateRenderer(vc, sc, cfg);
+			});
+
+			// Track active viewer
+			this.activeViewers.add(glslRenderer);
+
+			// Start animation if autoplay is enabled
+			if (config.autoplay) {
+				glslRenderer.play();
+			} else {
+				// For non-autoplay viewers, generate thumbnail
+				this.generateThumbnailIfNeeded(shaderCode, glslRenderer, viewerContainer, config);
+			}
+
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			ErrorDisplay.createAndShow(container, `Unexpected error: ${errorMessage}`);
+		}
+	}
+
+	/**
+	 * Setup lazy renderer loading for thumbnail-only viewers
+	 */
+	private setupLazyRenderer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) {
+		const playOverlay = viewerContainer.getPlayOverlay();
+		if (playOverlay) {
+			// Create one-time event listener for lazy loading
+			const lazyLoadHandler = async () => {
+				// Remove this event listener since it's one-time use
+				playOverlay.removeEventListener('click', lazyLoadHandler);
+
+				// Hide the play overlay first
+				viewerContainer.hidePlayOverlay();
+
+				// Switch from placeholder to canvas view
+				viewerContainer.hidePlaceholder();
+				viewerContainer.showCanvas();
+
+				// Create the actual GLSL renderer with autoplay enabled
+				const modifiedConfig = { ...config, autoplay: true };
+				await this.createActualGLSLViewer(viewerContainer, shaderCode, modifiedConfig);
+			};
+
+			// Add the one-time click handler
+			playOverlay.addEventListener('click', lazyLoadHandler);
+		}
+	}
+
+	/**
+	 * Create a thumbnail-only viewer that doesn't consume WebGL context
+	 */
+	private async createThumbnailOnlyViewer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) {
+		try {
+			// Check if thumbnail already exists
+			const thumbnailExists = await this.thumbnailManager.thumbnailExists(shaderCode, config);
+
+			if (thumbnailExists) {
+				// Display existing thumbnail
+				await this.displayThumbnail(shaderCode, viewerContainer, config);
+			} else {
+				// Show placeholder with "Click to load" message
+				this.showLazyLoadPlaceholder(viewerContainer, shaderCode, config);
+			}
+		} catch (error) {
+			// Show basic placeholder if thumbnail operations fail
+			this.showLazyLoadPlaceholder(viewerContainer, shaderCode, config);
+		}
+	}
+
+	/**
+	 * Show placeholder with lazy loading functionality
+	 */
+	private showLazyLoadPlaceholder(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) {
+		// Create a click-to-load overlay
+		const placeholder = viewerContainer.getPlaceholder();
+		if (placeholder) {
+			// Clear existing content using DOM API instead of innerHTML
+			placeholder.empty();
+
+			// Create container div using Obsidian's createEl
+			const container = placeholder.createEl('div', {
+				cls: 'glsl-lazy-load-container'
+			});
+
+			// Create lightning bolt icon
+			container.createEl('div', {
+				text: '⚡',
+				cls: 'glsl-lazy-load-icon'
+			});
+
+			// Create main message
+			container.createEl('div', {
+				text: 'Click to load GLSL viewer',
+				cls: 'glsl-lazy-load-message'
+			});
+
+			// Create subtitle
+			container.createEl('div', {
+				text: 'WebGL context limit reached',
+				cls: 'glsl-lazy-load-subtitle'
+			});
+
+			// Add click handler to create full viewer on demand
+			placeholder.addClass('glsl-lazy-load-clickable');
+			placeholder.addEventListener('click', async () => {
+				// Remove the placeholder content and create real viewer
+				placeholder.empty();
+				placeholder.removeClass('glsl-lazy-load-clickable');
+
+				// Create the actual viewer (ignore limits for user-requested load)
+				await this.createActualGLSLViewer(viewerContainer, shaderCode, config);
+			});
+		}
+	}
+
+	/**
+	 * Create actual GLSL viewer (bypassing context limits)
+	 */
+	private async createActualGLSLViewer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) {
+		const canvas = viewerContainer.getCanvas();
+		const container = viewerContainer.getContainer();
+
+		try {
+			// Create GLSL renderer instance
+			const glslRenderer = new GLSLRenderer(canvas, this.app, this);
+
+			// Apply template if specified
+			let processedShaderCode = shaderCode;
+			if (config.template) {
+				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
+				if (templateResult) {
+					processedShaderCode = templateResult;
+				} else {
+					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
+					return;
+				}
+			}
+
+			// Create Shadertoy-compatible shader code
+			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
+
+			// Load shader
+			const loadResult = glslRenderer.load(fullShaderCode);
+			if (!loadResult.success) {
+				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
+				return;
+			}
+
+			// Load textures if specified
+			await this.loadTextures(glslRenderer, config);
+
+			// Set up controls with renderer recreation callback
+			new ControlsManager(viewerContainer, glslRenderer, config, shaderCode, async (vc, sc, cfg) => {
+				return await this.recreateRenderer(vc, sc, cfg);
+			});
 
 			// Track active viewer
 			this.activeViewers.add(glslRenderer);
@@ -409,9 +551,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		return false;
 	}
 
-
-
-		/**
+	/**
 	 * Check if we're currently in edit mode or reading mode
 	 */
 	private isInEditMode(el: HTMLElement): boolean {
@@ -457,7 +597,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		// Parse shader config from comments
 		const config = this.parseShaderConfig(source);
 
-				// Clean up any existing GLSL viewer in this element
+		// Clean up any existing GLSL viewer in this element
 		this.cleanupExistingViewer(el);
 
 		// Create viewer container inside el
@@ -503,7 +643,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		// Parse shader config from comments
 		const config = this.parseShaderConfig(source);
 
-				// Clean up any existing GLSL viewer in this element
+		// Clean up any existing GLSL viewer in this element
 		this.cleanupExistingViewer(el);
 
 		// In edit mode, create viewer inside el (the CodeBlockProcessor container)
@@ -543,6 +683,69 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		if (config.hideCode) {
 			codeBlockContainer.classList.add('glsl-viewer-hidden');
 		}
+	}
+
+	/**
+	 * Recreate renderer after stop (callback for ControlsManager)
+	 */
+	private async recreateRenderer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig): Promise<GLSLRenderer | null> {
+		const canvas = viewerContainer.getCanvas();
+		const container = viewerContainer.getContainer();
+
+		try {
+			// Create new GLSL renderer instance
+			const glslRenderer = new GLSLRenderer(canvas, this.app, this);
+
+			// Apply template if specified
+			let processedShaderCode = shaderCode;
+			if (config.template) {
+				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
+				if (templateResult) {
+					processedShaderCode = templateResult;
+				} else {
+					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
+					return null;
+				}
+			}
+
+			// Create Shadertoy-compatible shader code
+			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
+
+			// Load shader
+			const loadResult = glslRenderer.load(fullShaderCode);
+			if (!loadResult.success) {
+				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
+				return null;
+			}
+
+			// Load textures if specified
+			await this.loadTextures(glslRenderer, config);
+
+			// Track active viewer
+			this.activeViewers.add(glslRenderer);
+
+			return glslRenderer;
+
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			ErrorDisplay.createAndShow(container, `Unexpected error: ${errorMessage}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Create a normal code block for GLSL code without @viewer directive
+	 */
+	private createNormalCodeBlock(source: string, el: HTMLElement) {
+		// Clear the element
+		el.empty();
+
+		// Create standard code block structure
+		const preElement = el.createEl('pre');
+		const codeElement = preElement.createEl('code', {
+			cls: 'language-glsl'
+		});
+		codeElement.textContent = source;
 	}
 }
 

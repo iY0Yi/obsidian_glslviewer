@@ -7,6 +7,7 @@ export class ViewerContainer {
 	private placeholder: HTMLElement;
 	private controls: HTMLElement;
 	private playButton: HTMLButtonElement | null = null;
+	private stopButton: HTMLButtonElement | null = null;
 	private playOverlay: HTMLButtonElement | null = null;
 
 	constructor(config: ShaderConfig, parentEl: HTMLElement) {
@@ -20,7 +21,7 @@ export class ViewerContainer {
 	private createContainer(parentEl: HTMLElement, config: ShaderConfig): HTMLElement {
 		const container = document.createElement('div');
 		container.className = 'glsl-viewer-container';
-		// CSS変数でアスペクト比を設定
+		// アスペクト比をカスタムプロパティで設定
 		container.style.setProperty('--aspect-ratio', config.aspect.toString());
 		parentEl.appendChild(container);
 		return container;
@@ -63,6 +64,15 @@ export class ViewerContainer {
 		}
 		this.controls.appendChild(this.playButton);
 
+		// Create stop button (only shown when playing)
+		this.stopButton = document.createElement('button');
+		this.stopButton.className = `glsl-viewer-button${config.autoplay ? ' visible' : ''}`;
+		const stopIcon = createSVGIconElement('stop');
+		if (stopIcon) {
+			this.stopButton.appendChild(stopIcon);
+		}
+		this.controls.appendChild(this.stopButton);
+
 		// Create play overlay (always create, but only show initially if not autoplay)
 		this.playOverlay = document.createElement('button');
 		this.playOverlay.className = `glsl-viewer-play-overlay${config.autoplay ? ' hidden' : ''}`;
@@ -88,6 +98,10 @@ export class ViewerContainer {
 
 	getPlayButton(): HTMLButtonElement | null {
 		return this.playButton;
+	}
+
+	getStopButton(): HTMLButtonElement | null {
+		return this.stopButton;
 	}
 
 	getPlayOverlay(): HTMLButtonElement | null {
@@ -135,6 +149,18 @@ export class ViewerContainer {
 		}
 	}
 
+	showStopButton() {
+		if (this.stopButton) {
+			this.stopButton.classList.add('visible');
+		}
+	}
+
+	hideStopButton() {
+		if (this.stopButton) {
+			this.stopButton.classList.remove('visible');
+		}
+	}
+
 	updatePlayButtonIcon(icon: string) {
 		if (this.playButton) {
 			// Clear existing icon and add new one using DOM API
@@ -149,8 +175,5 @@ export class ViewerContainer {
 	// Set thumbnail using CSS variables
 	setThumbnail(dataUrl: string) {
 		this.placeholder.style.setProperty('--thumbnail-image', `url(${dataUrl})`);
-		this.placeholder.style.setProperty('--thumbnail-size', 'cover');
-		this.placeholder.style.setProperty('--thumbnail-position', 'center');
-		this.placeholder.style.setProperty('--thumbnail-repeat', 'no-repeat');
 	}
 }
