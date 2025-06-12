@@ -188,10 +188,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 | `@autoplay: true/false` | Auto-start animation | false |
 | `@hideCode: true/false` | Hide code block, show viewer only | false |
 | `@template: filename` | Use template from templates folder | - |
-| `@iChannel0: path` | Texture file path | - |
-| `@iChannel1: path` | Texture file path | - |
-| `@iChannel2: path` | Texture file path | - |
-| `@iChannel3: path` | Texture file path | - |
 
 **Note**: `@viewer` directive is required only for `glsl` code blocks. `glsl-viewer` blocks are always processed.
 
@@ -221,9 +217,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
 Access via Settings → Community plugins → GLSL Viewer:
 
-**Performance Settings:**
-- **Maximum Active Viewers**: Performance control (1-50)
-
 **Display Settings:**
 - **Default Aspect Ratio**: Canvas ratio for new shaders
 - **Default Autoplay**: Whether new shaders auto-start by default
@@ -231,7 +224,6 @@ Access via Settings → Community plugins → GLSL Viewer:
 
 **Textures:**
 - **Texture Folder**: Limit texture browsing to specific folder
-- **iChannels Default**: Auto-loaded textures for iChannel0-3
 - **Texture Shortcuts**: Create shortcuts for frequently used textures
 
 ### Creating Custom Templates
