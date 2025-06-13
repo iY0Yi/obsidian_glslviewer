@@ -124,42 +124,6 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('h2', { text: 'GLSL Viewer Settings' });
 
-		// Performance Settings Section
-		containerEl.createEl('h3', { text: 'Performance Settings' });
-
-		// Max Active Viewers setting
-		new Setting(containerEl)
-			.setName('Maximum Active Viewers')
-			.setDesc('Controls how many GLSL shaders can run simultaneously to prevent performance issues. Recommended: 5-15 (performance-focused: 3-8). Changes apply to new shaders.')
-			.addText(text => text
-				.setPlaceholder('10')
-				.setValue(this.plugin.settings.maxActiveViewers.toString())
-				.onChange(async (value) => {
-					const numValue = parseInt(value);
-					if (!isNaN(numValue) && numValue >= 1 && numValue <= 50) {
-						this.plugin.settings.maxActiveViewers = numValue;
-						await this.plugin.saveSettings();
-					}
-				})
-			)
-			.addButton(button => {
-				const btn = button
-					.setButtonText('')
-					.setTooltip('Reset to default (10)')
-					.onClick(async () => {
-						this.plugin.settings.maxActiveViewers = 10;
-						await this.plugin.saveSettings();
-						this.display(); // Refresh display
-					});
-
-				// Add refresh icon to reset button
-				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'refresh');
-				}, 0);
-
-				return btn;
-			});
-
 		// Display Settings Section
 		containerEl.createEl('h3', { text: 'Display Settings' });
 
@@ -185,7 +149,11 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.defaultAspect = 0.5625;
 						await this.plugin.saveSettings();
-						this.display(); // Refresh display
+						// Update only the input field value instead of refreshing entire display
+						const inputEl = btn.buttonEl.parentElement?.querySelector('input[type="text"]') as HTMLInputElement;
+						if (inputEl) {
+							inputEl.value = '0.5625';
+						}
 					});
 
 				// Add refresh icon to reset button
@@ -273,7 +241,8 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.textureFolder = '';
 						await this.plugin.saveSettings();
-						this.display(); // Refresh display
+						// Update only the input field value instead of refreshing entire display
+						textureFolderTextComponent.setValue('');
 					});
 
 				// Add close icon to clear button
@@ -283,104 +252,6 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 				return btn;
 			});
-
-		// iChannels Default section
-		containerEl.createEl('h4', { text: 'iChannels Default' });
-
-		const defaultTextureInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
-		defaultTextureInfo.createEl('p').textContent = 'Textures automatically loaded when not specified in shader comments. Leave empty to disable.';
-		const supportedNote = defaultTextureInfo.createEl('p');
-		const supportedStrong = supportedNote.createEl('strong');
-		supportedStrong.textContent = 'Supported:';
-		supportedNote.appendText(' Vault-relative paths only');
-		const changesNote = defaultTextureInfo.createEl('p');
-		const changesStrong = changesNote.createEl('strong');
-		changesStrong.textContent = 'Note:';
-		changesNote.appendText(' Changes apply to new shaders only.');
-
-		// Helper function to create texture setting
-		const createTextureSetting = (channelName: 'defaultIChannel0' | 'defaultIChannel1' | 'defaultIChannel2' | 'defaultIChannel3', channelIndex: number, defaultValue: string) => {
-			let textComponent: TextComponent;
-
-			const setting = new Setting(containerEl)
-				.setName(`iChannel${channelIndex} Default`)
-				.setDesc(`Default texture for iChannel${channelIndex}. ${defaultValue ? `Currently set: ${defaultValue.length > 40 ? defaultValue.substring(0, 40) + '...' : defaultValue}` : 'Not set'}`)
-				.addText(text => {
-					textComponent = text;
-					return text
-						.setPlaceholder('path/to/texture.png')
-						.setValue(defaultValue)
-						.onChange(async (value) => {
-							this.plugin.settings[channelName] = value;
-							await this.plugin.saveSettings();
-							// Update description to show current status
-							setting.setDesc(`Default texture for iChannel${channelIndex}. ${value ? `Currently set: ${value.length > 40 ? value.substring(0, 40) + '...' : value}` : 'Not set'}`);
-							// Update placeholder
-							this.refreshImagePlaceholder(setting.settingEl, value);
-						});
-				})
-												.addButton(button => {
-					const btn = button
-						.setButtonText('')
-						.setTooltip('Browse for image file')
-						.onClick(() => {
-							const modal = new ImageFileSuggestModal(this.app, (selectedPath) => {
-								textComponent.setValue(selectedPath);
-								this.plugin.settings[channelName] = selectedPath;
-								this.plugin.saveSettings();
-								// Update description to show current status
-								setting.setDesc(`Default texture for iChannel${channelIndex}. Currently set: ${selectedPath.length > 40 ? selectedPath.substring(0, 40) + '...' : selectedPath}`);
-								// Update placeholder
-								this.refreshImagePlaceholder(setting.settingEl, selectedPath);
-							}, this.plugin.settings.textureFolder);
-							modal.open();
-						});
-
-					// Add folder open icon to browse button
-					setTimeout(() => {
-						this.addIconToButton(btn.buttonEl, 'folder_open');
-					}, 0);
-
-					return btn;
-				});
-
-			// Add clear button if there's a value
-			if (defaultValue) {
-												setting.addButton(button => {
-					const btn = button
-						.setButtonText('')
-						.setTooltip(`Clear iChannel${channelIndex} default`)
-						.setWarning()
-						.onClick(async () => {
-							this.plugin.settings[channelName] = '';
-							await this.plugin.saveSettings();
-							// Clear placeholder and refresh
-							this.refreshImagePlaceholder(setting.settingEl, '');
-							this.display(); // Refresh display
-						});
-
-					// Add close icon to clear button
-					setTimeout(() => {
-						this.addIconToButton(btn.buttonEl, 'close');
-					}, 0);
-
-					return btn;
-				});
-			}
-
-			// Add initial placeholder (always shown)
-			setTimeout(() => {
-				this.createImagePlaceholder(setting.settingEl, defaultValue);
-			}, 0);
-
-			return setting;
-		};
-
-		// Create settings for each channel
-		createTextureSetting('defaultIChannel0', 0, this.plugin.settings.defaultIChannel0);
-		createTextureSetting('defaultIChannel1', 1, this.plugin.settings.defaultIChannel1);
-		createTextureSetting('defaultIChannel2', 2, this.plugin.settings.defaultIChannel2);
-		createTextureSetting('defaultIChannel3', 3, this.plugin.settings.defaultIChannel3);
 
 		// Texture Shortcuts section
 		containerEl.createEl('h4', { text: 'Texture Shortcuts' });
@@ -395,7 +266,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Add shortcut button
 		const addShortcutContainer = containerEl.createDiv({ cls: 'add-shortcut-container' });
-				new Setting(addShortcutContainer)
+		new Setting(addShortcutContainer)
 			.addButton(button => {
 				const btn = button
 					.setButtonText('')

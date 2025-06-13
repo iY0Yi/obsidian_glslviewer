@@ -5,9 +5,6 @@ import { ShaderCompiler } from './shader-compiler';
 // Interface to avoid circular dependency with plugin
 export interface RendererPlugin {
 	activeViewers: Set<GLSLRenderer>;
-	settings: {
-		maxActiveViewers: number;
-	};
 }
 
 export class GLSLRenderer {
