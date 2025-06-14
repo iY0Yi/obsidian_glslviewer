@@ -43,7 +43,8 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 					this.processGLSLBlockReadingMode(source, el, ctx);
 				}
 			} else {
-				// For GLSL blocks without @viewer directive, create a normal code block
+				// For GLSL blocks without @viewer directive, preserve the original structure
+				// to maintain compatibility with CSS snippets and other plugins
 				this.createNormalCodeBlock(source, el);
 			}
 		});
@@ -605,34 +606,58 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		}
 	}
 
-	/**
-	 * Create a normal code block for GLSL code without @viewer directive
+			/**
+	 * Create normal code block for GLSL code without @viewer directive
+	 * This function recreates the exact Obsidian reading mode code block structure
+	 * to maintain compatibility with CSS snippets and other plugins (like Shiki highlighter).
 	 */
 	private createNormalCodeBlock(source: string, el: HTMLElement) {
-		// Clear the element
+		// We must recreate the exact Obsidian reading mode code block structure
+		// because registerMarkdownCodeBlockProcessor gives us complete control
+
+		// Clear the element (this is necessary since we're taking full control)
 		el.empty();
 
-		// Create standard code block structure with Obsidian's default classes
+		// Add the outer container class that Obsidian uses
+		el.addClass('el-pre');
+
+		// Create the exact Obsidian reading mode structure
 		const preElement = el.createEl('pre', {
-			cls: ['code-block', 'language-glsl']
+			cls: 'language-glsl',
+			attr: { tabindex: '0' }
 		});
+
 		const codeElement = preElement.createEl('code', {
-			cls: ['is-loaded', 'language-glsl']
-		});
-		codeElement.textContent = source;
-
-		// Add copy button container (Obsidian's standard structure)
-		const buttonContainer = preElement.createEl('div', {
-			cls: 'code-block-flair'
+			cls: 'language-glsl is-loaded',
+			attr: { 'data-line': '0' }
 		});
 
-		// Add copy button with Obsidian's standard styling
-		const copyButton = buttonContainer.createEl('button', {
+		// Try to apply syntax highlighting using Prism if available
+		try {
+			// Check if Prism is available globally
+			if ((window as any).Prism && (window as any).Prism.highlight) {
+				const highlightedCode = (window as any).Prism.highlight(
+					source,
+					(window as any).Prism.languages.glsl || (window as any).Prism.languages.c,
+					'glsl'
+				);
+				codeElement.innerHTML = highlightedCode;
+			} else {
+				// Fallback to plain text if Prism is not available
+				codeElement.textContent = source;
+			}
+		} catch (error) {
+			// Fallback to plain text on any error
+			codeElement.textContent = source;
+		}
+
+		// Add the copy button (standard Obsidian feature)
+		const copyButton = el.createEl('button', {
 			cls: 'copy-code-button'
 		});
 		copyButton.setAttribute('aria-label', 'Copy');
 
-		// Add copy icon using Obsidian's icon system
+		// Add copy icon using Obsidian's standard structure
 		const copyIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		copyIcon.setAttribute('viewBox', '0 0 24 24');
 		copyIcon.setAttribute('width', '24');
@@ -643,7 +668,7 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		copyIcon.appendChild(path);
 		copyButton.appendChild(copyIcon);
 
-		// Add click handler for copy button
+		// Add copy functionality
 		copyButton.addEventListener('click', async (e) => {
 			e.preventDefault();
 			await navigator.clipboard.writeText(source);
@@ -654,6 +679,12 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 				copyButton.setAttribute('aria-label', 'Copy');
 			}, 1000);
 		});
+
+		// Add a class to distinguish from viewer blocks for CSS targeting
+		preElement.addClass('glsl-standard-block');
+
+		// Mark as processed
+		el.setAttribute('data-glsl-processed', 'true');
 	}
 
 	/**
