@@ -42,8 +42,9 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		const placeholderContainer = container.createDiv({ cls: 'setting-image-placeholder' });
 
 		if (imagePath && imagePath.trim()) {
-			// If image path is provided, try to load thumbnail
-			this.loadImageIntoPlaceholder(placeholderContainer, imagePath);
+			// Resolve the path and try to load thumbnail
+			const resolvedPath = this.resolveTexturePath(imagePath);
+			this.loadImageIntoPlaceholder(placeholderContainer, resolvedPath);
 		} else {
 			// Show default image icon
 			this.showDefaultImageIcon(placeholderContainer);
@@ -98,6 +99,28 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		}
 	}
 
+	// Helper method to resolve texture path (same logic as main plugin)
+	private resolveTexturePath(pathOrKey: string): string {
+		// 1. Check if it's a shortcut key first
+		const shortcut = this.plugin.settings.textureShortcuts.find(s => s.key === pathOrKey);
+		if (shortcut) {
+			// Shortcuts are always relative to texture folder
+			if (this.plugin.settings.textureFolder && this.plugin.settings.textureFolder.trim()) {
+				return `${this.plugin.settings.textureFolder}/${shortcut.path}`;
+			} else {
+				return shortcut.path;
+			}
+		}
+
+		// 2. If texture folder is set, use it as the base directory for texture paths
+		if (this.plugin.settings.textureFolder && this.plugin.settings.textureFolder.trim()) {
+			return `${this.plugin.settings.textureFolder}/${pathOrKey}`;
+		}
+
+		// 3. If no texture folder is set, treat as vault root relative path
+		return pathOrKey;
+	}
+
 	// Helper method to refresh image placeholder
 	private async refreshImagePlaceholder(settingEl: HTMLElement, imagePath: string): Promise<void> {
 		// Find existing placeholder
@@ -105,13 +128,36 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		if (existingPlaceholder) {
 			// Update the placeholder content
 			if (imagePath && imagePath.trim()) {
-				await this.loadImageIntoPlaceholder(existingPlaceholder as HTMLElement, imagePath);
+				// Resolve the path for thumbnail display
+				const resolvedPath = this.resolveTexturePath(imagePath);
+				await this.loadImageIntoPlaceholder(existingPlaceholder as HTMLElement, resolvedPath);
 			} else {
 				this.showDefaultImageIcon(existingPlaceholder as HTMLElement);
 			}
 		} else {
 			// Create new placeholder if it doesn't exist
-			this.createImagePlaceholder(settingEl, imagePath);
+			const resolvedPath = imagePath ? this.resolveTexturePath(imagePath) : imagePath;
+			this.createImagePlaceholder(settingEl, resolvedPath);
+		}
+	}
+
+	// Helper method to refresh image placeholder with absolute path (for file selection)
+	private async refreshImagePlaceholderWithAbsolutePath(settingEl: HTMLElement, absolutePath: string): Promise<void> {
+		// Find existing placeholder
+		const existingPlaceholder = settingEl.querySelector('.setting-image-placeholder');
+		if (existingPlaceholder) {
+			// Update the placeholder content with absolute path directly
+			if (absolutePath && absolutePath.trim()) {
+				await this.loadImageIntoPlaceholder(existingPlaceholder as HTMLElement, absolutePath);
+			} else {
+				this.showDefaultImageIcon(existingPlaceholder as HTMLElement);
+			}
+		} else {
+			// Create new placeholder if it doesn't exist with absolute path
+			const placeholderContainer = this.createImagePlaceholder(settingEl, '');
+			if (absolutePath && absolutePath.trim()) {
+				await this.loadImageIntoPlaceholder(placeholderContainer, absolutePath);
+			}
 		}
 	}
 
@@ -188,25 +234,78 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				})
 			);
 
-		// Textures Settings Section
-		containerEl.createEl('h3', { text: 'Textures' });
+		// Folders Settings Section
+		containerEl.createEl('h3', { text: 'Folders' });
 
 		// Add horizontal rule
 		containerEl.createEl('hr', { cls: 'glsl-settings-divider' });
 
-		// Textures description
-		const texturesDesc = containerEl.createEl('div', { cls: 'setting-item-description' });
-		texturesDesc.createEl('p').textContent = 'Configure texture settings for GLSL shaders. Textures can be specified using file paths or shortcuts.';
+		// Folders description
+		const foldersDesc = containerEl.createEl('div', { cls: 'setting-item-description' });
+		foldersDesc.createEl('p').textContent = 'Configure folder locations for templates, thumbnails, and texture browsing.';
 
-		// Texture Folder setting
+		// Thumbnails Folder setting (highest priority)
+		let thumbnailsFolderTextComponent: TextComponent;
+		new Setting(containerEl)
+			.setName('Thumbnails Folder')
+			.setDesc('Folder for storing generated thumbnails. Thumbnails are automatically created for non-autoplay shaders.')
+			.addText(text => {
+				thumbnailsFolderTextComponent = text;
+				return text
+					.setPlaceholder('GLSL Thumbnails')
+					.setValue(this.plugin.settings.thumbnailsFolder)
+					.onChange(async (value) => {
+						this.plugin.settings.thumbnailsFolder = value;
+						await this.plugin.saveSettings();
+					});
+			})
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Browse for folder')
+					.onClick(() => {
+						const modal = new FolderSuggestModal(this.app, (selectedPath) => {
+							thumbnailsFolderTextComponent.setValue(selectedPath);
+							this.plugin.settings.thumbnailsFolder = selectedPath;
+							this.plugin.saveSettings();
+						});
+						modal.open();
+					});
+
+				// Add folder open icon to browse button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'folder_open');
+				}, 0);
+
+				return btn;
+			})
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Reset to default')
+					.onClick(async () => {
+						this.plugin.settings.thumbnailsFolder = 'GLSL Thumbnails';
+						await this.plugin.saveSettings();
+						thumbnailsFolderTextComponent.setValue('GLSL Thumbnails');
+					});
+
+				// Add refresh icon to reset button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'refresh');
+				}, 0);
+
+				return btn;
+			});
+
+		// Texture Folder setting (second priority)
 		let textureFolderTextComponent: TextComponent;
 		new Setting(containerEl)
 			.setName('Texture Folder')
-			.setDesc('Folder containing texture files. Browse dialogs will search only within this folder. Leave empty to search entire vault.')
+			.setDesc('Base folder for texture paths in @iChannel directives. When set, all texture paths (except shortcuts) are resolved relative to this folder. Also limits texture browsing to this folder.')
 			.addText(text => {
 				textureFolderTextComponent = text;
 				return text
-					.setPlaceholder('textures')
+					.setPlaceholder('assets/textures')
 					.setValue(this.plugin.settings.textureFolder)
 					.onChange(async (value) => {
 						this.plugin.settings.textureFolder = value;
@@ -236,25 +335,79 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			.addButton(button => {
 				const btn = button
 					.setButtonText('')
-					.setTooltip('Clear texture folder restriction')
-					.setWarning()
+					.setTooltip('Reset to default (empty)')
 					.onClick(async () => {
 						this.plugin.settings.textureFolder = '';
 						await this.plugin.saveSettings();
-						// Update only the input field value instead of refreshing entire display
 						textureFolderTextComponent.setValue('');
 					});
 
-				// Add close icon to clear button
+				// Add refresh icon to reset button (unified with others)
 				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'close');
+					this.addIconToButton(btn.buttonEl, 'refresh');
 				}, 0);
 
 				return btn;
 			});
 
-		// Texture Shortcuts section
-		containerEl.createEl('h4', { text: 'Texture Shortcuts' });
+		// Templates Folder setting (third priority)
+		let templatesFolderTextComponent: TextComponent;
+		new Setting(containerEl)
+			.setName('Templates Folder')
+			.setDesc('Folder for storing GLSL templates. Templates enable reusing complex setups across multiple shaders.')
+			.addText(text => {
+				templatesFolderTextComponent = text;
+				return text
+					.setPlaceholder('GLSL Templates')
+					.setValue(this.plugin.settings.templatesFolder)
+					.onChange(async (value) => {
+						this.plugin.settings.templatesFolder = value;
+						await this.plugin.saveSettings();
+					});
+			})
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Browse for folder')
+					.onClick(() => {
+						const modal = new FolderSuggestModal(this.app, (selectedPath) => {
+							templatesFolderTextComponent.setValue(selectedPath);
+							this.plugin.settings.templatesFolder = selectedPath;
+							this.plugin.saveSettings();
+						});
+						modal.open();
+					});
+
+				// Add folder open icon to browse button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'folder_open');
+				}, 0);
+
+				return btn;
+			})
+			.addButton(button => {
+				const btn = button
+					.setButtonText('')
+					.setTooltip('Reset to default')
+					.onClick(async () => {
+						this.plugin.settings.templatesFolder = 'GLSL Templates';
+						await this.plugin.saveSettings();
+						templatesFolderTextComponent.setValue('GLSL Templates');
+					});
+
+				// Add refresh icon to reset button
+				setTimeout(() => {
+					this.addIconToButton(btn.buttonEl, 'refresh');
+				}, 0);
+
+				return btn;
+			});
+
+		// Texture Shortcuts Settings Section (now as main section)
+		containerEl.createEl('h3', { text: 'Texture Shortcuts' });
+
+		// Add horizontal rule
+		containerEl.createEl('hr', { cls: 'glsl-settings-divider' });
 		const shortcutDesc = containerEl.createEl('div', { cls: 'setting-item-description' });
 		shortcutDesc.createEl('p').textContent = 'Create shortcuts for frequently used textures. Use shortcut keys in @iChannel directives (e.g., @iChannel0: tex1).';
 
@@ -324,11 +477,19 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 						.setTooltip('Browse for texture file')
 						.onClick(() => {
 							const modal = new ImageFileSuggestModal(this.app, (selectedPath) => {
-								pathComponent.setValue(selectedPath);
-								this.plugin.settings.textureShortcuts[index].path = selectedPath;
+								// Convert to relative path if Texture Folder is set
+								let finalPath = selectedPath;
+								if (this.plugin.settings.textureFolder &&
+									this.plugin.settings.textureFolder.trim() &&
+									selectedPath.startsWith(this.plugin.settings.textureFolder + '/')) {
+									finalPath = selectedPath.substring(this.plugin.settings.textureFolder.length + 1);
+								}
+
+								pathComponent.setValue(finalPath);
+								this.plugin.settings.textureShortcuts[index].path = finalPath;
 								this.plugin.saveSettings();
-								// Update placeholder
-								this.refreshImagePlaceholder(shortcutEl, selectedPath);
+								// Update placeholder with original absolute path for thumbnail display
+								this.refreshImagePlaceholderWithAbsolutePath(shortcutEl, selectedPath);
 							}, this.plugin.settings.textureFolder);
 							modal.open();
 						});

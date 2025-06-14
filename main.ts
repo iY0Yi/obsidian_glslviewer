@@ -20,8 +20,8 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		await this.loadSettings();
 
 		// Initialize managers
-		this.thumbnailManager = new ThumbnailManager(this.app);
-		this.templateManager = new TemplateManager(this.app);
+		this.thumbnailManager = new ThumbnailManager(this.app, this.settings);
+		this.templateManager = new TemplateManager(this.app, this.settings);
 
 		// Ensure templates directory exists
 		await this.templateManager.ensureTemplatesDir();
@@ -67,6 +67,11 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		// Reinitialize managers with updated settings
+		this.thumbnailManager = new ThumbnailManager(this.app, this.settings);
+		this.templateManager = new TemplateManager(this.app, this.settings);
+		// Ensure the new templates directory exists
+		await this.templateManager.ensureTemplatesDir();
 	}
 
 	/**
@@ -237,13 +242,28 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		}
 	}
 
-	/**
-	 * Resolve texture path from shortcut key or return original path
+		/**
+	 * Resolve texture path from shortcut key, texture folder, or return original path
 	 */
 	private resolveTexturePath(pathOrKey: string): string {
-		// Check if it's a shortcut key
+		// 1. Check if it's a shortcut key first
 		const shortcut = this.settings.textureShortcuts.find(s => s.key === pathOrKey);
-		return shortcut ? shortcut.path : pathOrKey;
+		if (shortcut) {
+			// Shortcuts are always relative to texture folder
+			if (this.settings.textureFolder && this.settings.textureFolder.trim()) {
+				return `${this.settings.textureFolder}/${shortcut.path}`;
+			} else {
+				return shortcut.path;
+			}
+		}
+
+		// 2. If texture folder is set, use it as the base directory for texture paths
+		if (this.settings.textureFolder && this.settings.textureFolder.trim()) {
+			return `${this.settings.textureFolder}/${pathOrKey}`;
+		}
+
+		// 3. If no texture folder is set, treat as vault root relative path
+		return pathOrKey;
 	}
 
 	private extractShaderCode(source: string): string {

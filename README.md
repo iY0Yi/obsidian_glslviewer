@@ -21,12 +21,13 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 *Use templates to simplify complex shaders - write minimal code, get maximum results*
 
 ### And more
-- 📸 Thumbnail generation for non-autoplay shaders
+- 📸 **Thumbnail generation**: Automatic thumbnails for non-autoplay shaders
 - ⚙️ Configurable canvas ratio, autoplay, and code visibility
 - 🔧 Flexible configuration using comments in code blocks
 - 🎯 **Texture shortcuts**: Quick reference to frequently used textures
 - 📁 **Texture browser**: Visual texture selection with folder filtering
 - 🙈 **@hideCode**: Show only the viewer or with code
+- 📁 **Configurable folders**: Set custom locations for templates and thumbnails
 - 🎯 **Works with syntax highlighters**: No conflicts with other code plugins (Shiki Highlighter)
 </br></br></br>
 ## Installation
@@ -105,7 +106,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 ### Template Example
 
 Templates enable the creation of complex shader patterns with minimal code.</br>
-Create custom templates in `.obsidian/plugins/glsl-viewer/templates/`.</br>
+Create custom templates in your configured templates folder (default: `GLSL Templates/`).</br>
 Share complex setups across multiple shaders.
 
 ````glsl
@@ -119,62 +120,35 @@ vec4 map(vec3 p) {
 ```
 ````
 
-### Texture Path Formats
+### Using Textures
 
-| Path Type | Example | Description |
-|-----------|---------|-------------|
-| **Vault-relative** | `images/texture.jpg` | Relative to vault root |
-| **Shortcut Key** | `tex1` | Pre-configured texture shortcuts |
+**Three ways to specify textures:**
+- **Shortcuts**: `tex1` (configured in settings)
+- **Filenames**: `wood.png` (when Texture Folder is set)
+- **Full paths**: `images/wood.png` (relative to vault root)
 
 ### Texture Shortcuts
 
 Create shortcuts for frequently used textures in plugin settings.</br>
-Instead of typing full paths, use short keys:
+Shortcuts are always relative to your Texture Folder setting:
 
 ````glsl
 ```glsl
 // @viewer
-// @iChannel0: tex1      // Uses shortcut 'tex1'
-// @iChannel1: noise     // Uses shortcut 'noise'
+// @iChannel0: tex1      // Uses shortcut 'tex1' → {TextureFolder}/wood.png
+// @iChannel1: noise     // Uses shortcut 'noise' → {TextureFolder}/noise.jpg
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / iResolution.xy;
-    vec3 tex = texture(iChannel0, uv).rgb;    // 'tex1' texture
-    vec3 n = texture(iChannel1, uv).rgb;      // 'noise' texture
+    vec3 tex = texture(iChannel0, uv).rgb;    // wood texture
+    vec3 n = texture(iChannel1, uv).rgb;      // noise texture
     fragColor = vec4(mix(tex, n, 0.5), 1.0);
 }
 ```
 ````
 
-**Configure shortcuts in Settings → GLSL Viewer → Textures → Texture Shortcuts**
+**Configure shortcuts in Settings → GLSL Viewer → Texture Shortcuts**
 
-### Texture Resolution Access
 
-Access texture dimensions using `iChannelResolution[channel]` uniform:</br>
-Each channel provides a `vec3` with (width, height, z_component).</br>
-**Note**: Only 2D textures are supported. The z component is always 1.0 for Shadertoy compatibility.
-
-````glsl
-```glsl
-// @viewer
-// @iChannel0: tex1
-void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord / iResolution.xy;
-
-    // Get texture resolution for iChannel0
-    vec3 texRes = iChannelResolution[0];
-    float texWidth = texRes.x;      // Texture width in pixels
-    float texHeight = texRes.y;     // Texture height in pixels
-    // texRes.z is always 1.0 (reserved for 3D textures, but only 2D supported)
-
-    // Calculate aspect ratio for UV scaling
-    float texAspect = texWidth / texHeight;
-    vec2 scaledUV = uv * (iResolution.xy / texRes.xy);
-    vec3 color = texture(iChannel0, scaledUV).rgb;
-
-    fragColor = vec4(color, 1.0);
-}
-```
-````
 
 </br></br></br>
 ## Configuration Options
@@ -206,12 +180,13 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
 ## Technical Details
 
-- **Rendering**: Pure WebGL implementation
 - **Shader Type**: Fragment shaders only
 - **Entry Point**: `mainImage(out vec4 fragColor, in vec2 fragCoord)`
-- **Textures**: Load images from anywhere in your vault
+- **Textures**: Load images from anywhere in your vault with flexible path resolution
 - **Templates**: Custom templates with `@TEMPLATE_LINES` placeholder replacement
-- **Performance**: Configurable concurrent shader limit
+- **Thumbnails**: Auto-generated for non-autoplay shaders, stored in configurable folder
+- **Texture Folder**: Serves as base directory for relative texture paths and shortcuts
+
 
 ### Plugin Settings
 
@@ -222,30 +197,20 @@ Access via Settings → Community plugins → GLSL Viewer:
 - **Default Autoplay**: Whether new shaders auto-start by default
 - **Default Hide Code**: Whether to hide code blocks by default
 
-**Textures:**
-- **Texture Folder**: Limit texture browsing to specific folder
-- **Texture Shortcuts**: Create shortcuts for frequently used textures
+**Folders:** _(in setup priority order)_
+- **Thumbnails Folder**: Where generated thumbnails are stored (default: `GLSL Thumbnails`)
+- **Texture Folder**: Base folder for texture paths and browsing (optional)
+- **Templates Folder**: Where GLSL templates are stored (default: `GLSL Templates`)
 
-### Creating Custom Templates
+**Texture Shortcuts:**
+- Create shortcuts for frequently used textures (e.g., `tex1`, `noise`)
+- All shortcuts are relative to the Texture Folder setting
 
-1. Create a `.glsl` file in `.obsidian/plugins/glsl-viewer/templates/`
-2. Use `@TEMPLATE_LINES` placeholder where user code should be inserted
-3. Reference the template with `// @template: filename.glsl`
+### Creating Templates
 
-**Example template** (`raymarching.glsl`):
-```glsl
-// Raymarching template with lighting and camera
-uniform vec3 iResolution;
-uniform float iTime;
-
-vec3 camera(vec2 uv) { /* camera logic */ }
-
-@TEMPLATE_LINES  // User's map() function goes here
-
-void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    // Full raymarching pipeline
-}
-```
+1. Create a `.glsl` file in your Templates Folder (default: `GLSL Templates/`)
+2. Use `@TEMPLATE_LINES` where your code should be inserted
+3. Reference with `// @template: filename.glsl`
 </br></br></br>
 ## Development
 

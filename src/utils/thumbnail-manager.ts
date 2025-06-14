@@ -1,14 +1,26 @@
 import { App, TFile, TFolder } from 'obsidian';
 import { ShaderConfig } from '../types/shader-config';
+import { GLSLViewerSettings } from '../types/settings';
 
 export class ThumbnailManager {
 	private app: App;
-	private thumbnailDir: string;
+	private settings: GLSLViewerSettings;
 
-	constructor(app: App) {
+	constructor(app: App, settings: GLSLViewerSettings) {
 		this.app = app;
-		// Use Vault#configDir instead of hardcoded .obsidian
-		this.thumbnailDir = `${this.app.vault.configDir}/plugins/glsl-viewer/thumbnails`;
+		this.settings = settings;
+	}
+
+	/**
+	 * Get the thumbnail directory path based on user settings
+	 */
+	private getThumbnailDir(): string {
+		// If user has set a custom folder, use it (relative to vault root)
+		// Otherwise fall back to the old plugin directory for backward compatibility
+		if (this.settings.thumbnailsFolder && this.settings.thumbnailsFolder.trim()) {
+			return this.settings.thumbnailsFolder;
+		}
+		return `${this.app.vault.configDir}/plugins/glsl-viewer/thumbnails`;
 	}
 
 	/**
@@ -43,21 +55,22 @@ export class ThumbnailManager {
 	 */
 	private getThumbnailFilePath(shaderCode: string, config?: ShaderConfig): string {
 		const hash = this.generateHash(shaderCode, config);
-		return `${this.thumbnailDir}/${hash}.jpg`;
+		return `${this.getThumbnailDir()}/${hash}.jpg`;
 	}
 
-				/**
+	/**
 	 * Ensure thumbnail directory exists
 	 */
 	private async ensureThumbnailDir(): Promise<void> {
 		try {
 			const adapter = this.app.vault.adapter;
+			const thumbnailDir = this.getThumbnailDir();
 
 			// Check if directory exists using adapter
-			const dirExists = await adapter.exists(this.thumbnailDir);
+			const dirExists = await adapter.exists(thumbnailDir);
 			if (!dirExists) {
 				// Create directories step by step (for nested paths)
-				const dirs = this.thumbnailDir.split('/').filter(d => d.length > 0);
+				const dirs = thumbnailDir.split('/').filter(d => d.length > 0);
 				let currentPath = '';
 
 				for (const dir of dirs) {
@@ -73,7 +86,7 @@ export class ThumbnailManager {
 		}
 	}
 
-			/**
+	/**
 	 * Check if thumbnail exists for given shader code and config
 	 */
 	async thumbnailExists(shaderCode: string, config?: ShaderConfig): Promise<boolean> {

@@ -9,6 +9,8 @@ export interface GLSLViewerSettings {
 	defaultHideCode: boolean;
 	textureFolder: string;
 	textureShortcuts: TextureShortcut[];
+	templatesFolder: string;
+	thumbnailsFolder: string;
 }
 
 export const DEFAULT_SETTINGS: GLSLViewerSettings = {
@@ -17,4 +19,6 @@ export const DEFAULT_SETTINGS: GLSLViewerSettings = {
 	defaultHideCode: false,
 	textureFolder: '',
 	textureShortcuts: [],
+	templatesFolder: 'GLSL Templates',
+	thumbnailsFolder: 'GLSL Thumbnails',
 };
