@@ -15,7 +15,7 @@
 		"shader",
 		"webgl"
 	],
-	"author": "so_no_yo",
+	"author": "iY0Yi",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
