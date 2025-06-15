@@ -632,24 +632,37 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			attr: { 'data-line': '0' }
 		});
 
-		// Try to apply syntax highlighting using Prism if available
-		try {
-			// Check if Prism is available globally
-			if ((window as any).Prism && (window as any).Prism.highlight) {
-				const highlightedCode = (window as any).Prism.highlight(
-					source,
-					(window as any).Prism.languages.glsl || (window as any).Prism.languages.c,
-					'glsl'
-				);
-				codeElement.innerHTML = highlightedCode;
-			} else {
-				// Fallback to plain text if Prism is not available
-				codeElement.textContent = source;
+		// Set the code content as plain text initially
+		codeElement.textContent = source;
+
+		// Apply syntax highlighting using Prism after a short delay
+		// Note: Using innerHTML here is safe because:
+		// 1. Prism.highlight() only returns sanitized HTML with <span class="token ..."> elements
+		// 2. No user input is directly inserted - only Prism's processed output
+		// 3. This is the standard approach used by Obsidian itself for syntax highlighting
+		setTimeout(() => {
+			try {
+				// Access Obsidian's global Prism instance with proper typing
+				interface ObsidianPrism {
+					highlight: (code: string, grammar: any, language: string) => string;
+					languages: { [key: string]: any };
+				}
+
+				const prism = (window as any).Prism as ObsidianPrism | undefined;
+				if (prism && prism.highlight && prism.languages) {
+					// Use GLSL language if available, fallback to C-like syntax for basic highlighting
+					const language = prism.languages.glsl || prism.languages.c || prism.languages.clike;
+					if (language) {
+						// Prism.highlight returns only safe HTML: <span class="token keyword">void</span> etc.
+						const highlightedCode = prism.highlight(source, language, 'glsl');
+						codeElement.innerHTML = highlightedCode;
+					}
+				}
+			} catch (error) {
+				// Silent fallback - keep plain text if highlighting fails
+				console.debug('GLSL syntax highlighting failed:', error);
 			}
-		} catch (error) {
-			// Fallback to plain text on any error
-			codeElement.textContent = source;
-		}
+		}, 100); // Short delay to ensure Prism has been initialized by Obsidian
 
 		// Add the copy button (standard Obsidian feature)
 		const copyButton = el.createEl('button', {
