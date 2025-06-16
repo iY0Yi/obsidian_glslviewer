@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-glsl-viewer",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "A plugin to preview GLSL shaders in Obsidian notes with WebGL rendering",
 	"main": "main.js",
 	"scripts": {

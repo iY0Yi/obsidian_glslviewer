@@ -1,7 +1,7 @@
 {
 	"id": "glsl-viewer",
 	"name": "GLSL Viewer",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"minAppVersion": "0.15.0",
 	"description": "Preview GLSL shaders in your notes with WebGL rendering. Supports Shadertoy-style shaders with live preview.",
 	"author": "iY0Yi",
