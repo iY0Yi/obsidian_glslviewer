@@ -358,7 +358,9 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			}
 
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage = (error && typeof error === 'object' && 'message' in error)
+				? (error as Error).message
+				: String(error);
 			ErrorDisplay.createAndShow(container, `Unexpected error: ${errorMessage}`);
 		}
 	}
@@ -600,7 +602,9 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 			return glslRenderer;
 
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage = (error && typeof error === 'object' && 'message' in error)
+				? (error as Error).message
+				: String(error);
 			ErrorDisplay.createAndShow(container, `Unexpected error: ${errorMessage}`);
 			return null;
 		}
@@ -636,26 +640,42 @@ export default class GLSLViewerPlugin extends Plugin implements RendererPlugin {
 		codeElement.textContent = source;
 
 		// Apply syntax highlighting using Prism after a short delay
-		// Note: Using innerHTML here is safe because:
-		// 1. Prism.highlight() only returns sanitized HTML with <span class="token ..."> elements
-		// 2. No user input is directly inserted - only Prism's processed output
-		// 3. This is the standard approach used by Obsidian itself for syntax highlighting
+		// Using secure DOM manipulation instead of innerHTML
 		setTimeout(() => {
 			try {
-				// Access Obsidian's global Prism instance with proper typing
-				interface ObsidianPrism {
-					highlight: (code: string, grammar: any, language: string) => string;
-					languages: { [key: string]: any };
+				// Access Obsidian's global Prism instance with proper type definition
+				interface PrismLanguageGrammar {
+					[key: string]: any;
 				}
 
-				const prism = (window as any).Prism as ObsidianPrism | undefined;
-				if (prism && prism.highlight && prism.languages) {
-					// Use GLSL language if available, fallback to C-like syntax for basic highlighting
-					const language = prism.languages.glsl || prism.languages.c || prism.languages.clike;
-					if (language) {
-						// Prism.highlight returns only safe HTML: <span class="token keyword">void</span> etc.
-						const highlightedCode = prism.highlight(source, language, 'glsl');
-						codeElement.innerHTML = highlightedCode;
+				interface ObsidianPrism {
+					highlight: (code: string, grammar: PrismLanguageGrammar, language: string) => string;
+					languages: { [key: string]: PrismLanguageGrammar };
+				}
+
+				// Check if Prism is available in the global scope with type safety
+				if (typeof window !== 'undefined' && 'Prism' in window) {
+					const prism = (window as { Prism?: ObsidianPrism }).Prism;
+					if (prism && prism.highlight && prism.languages) {
+						// Use GLSL language if available, fallback to C-like syntax for basic highlighting
+						const language = prism.languages.glsl || prism.languages.c || prism.languages.clike;
+						if (language) {
+														// Get highlighted code from Prism
+							const highlightedCode = prism.highlight(source, language, 'glsl');
+
+							// Safely parse the highlighted HTML using DOMParser to avoid innerHTML security risks
+							const parser = new DOMParser();
+							const doc = parser.parseFromString(`<div>${highlightedCode}</div>`, 'text/html');
+							const parsedDiv = doc.body.firstElementChild;
+
+							if (parsedDiv) {
+								// Clear the code element and append parsed nodes
+								codeElement.empty();
+								while (parsedDiv.firstChild) {
+									codeElement.appendChild(parsedDiv.firstChild);
+								}
+							}
+						}
 					}
 				}
 			} catch (error) {

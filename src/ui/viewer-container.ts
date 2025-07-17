@@ -21,8 +21,8 @@ export class ViewerContainer {
 	private createContainer(parentEl: HTMLElement, config: ShaderConfig): HTMLElement {
 		const container = document.createElement('div');
 		container.className = 'glsl-viewer-container';
-		// アスペクト比をカスタムプロパティで設定
-		container.style.setProperty('--aspect-ratio', config.aspect.toString());
+		// アスペクト比をdata属性で設定し、CSSで処理
+		container.setAttribute('data-aspect-ratio', config.aspect.toString());
 		parentEl.appendChild(container);
 		return container;
 	}
@@ -172,8 +172,15 @@ export class ViewerContainer {
 		}
 	}
 
-	// Set thumbnail using CSS variables
+	// Set thumbnail using img element to avoid JavaScript style manipulation
 	setThumbnail(dataUrl: string) {
-		this.placeholder.style.setProperty('--thumbnail-image', `url(${dataUrl})`);
+		// Clear any existing content
+		this.placeholder.empty();
+
+		// Create img element for thumbnail display (avoids CSS style manipulation)
+		const thumbnailImg = this.placeholder.createEl('img', {
+			cls: 'glsl-viewer-thumbnail-image'
+		});
+		thumbnailImg.src = dataUrl;
 	}
 }

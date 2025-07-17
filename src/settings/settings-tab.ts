@@ -57,14 +57,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 	private async loadImageIntoPlaceholder(container: HTMLElement, imagePath: string): Promise<void> {
 		// Check if file exists using TFile
 		const file = this.app.vault.getAbstractFileByPath(imagePath);
-		if (!file || !(file instanceof TFile)) {
+		if (!file || !('stat' in file)) { // TFile has stat property, TFolder does not
 			this.showDefaultImageIcon(container);
 			return;
 		}
 
 		try {
 			// Load image using Obsidian's vault API
-			const arrayBuffer = await this.app.vault.readBinary(file);
+			const arrayBuffer = await this.app.vault.readBinary(file as TFile);
 			const blob = new Blob([arrayBuffer]);
 			const url = URL.createObjectURL(blob);
 

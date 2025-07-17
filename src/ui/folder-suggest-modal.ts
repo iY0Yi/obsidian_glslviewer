@@ -16,7 +16,7 @@ export class FolderSuggestModal extends FuzzySuggestModal<FolderItem> {
 
 	getItems(): FolderItem[] {
 		return this.app.vault.getAllLoadedFiles()
-			.filter(file => file instanceof TFolder)
+			.filter(file => 'children' in file) // TFolder has children property, TFile does not
 			.map(folder => ({
 				folder: folder as TFolder,
 				path: folder.path === '/' ? '' : folder.path
@@ -48,8 +48,8 @@ export class FolderSuggestModal extends FuzzySuggestModal<FolderItem> {
 		folderName.textContent = item.item.path || 'Root';
 
 		// Subfolder count
-		const subfolderCount = item.item.folder.children.filter(child => child instanceof TFolder).length;
-		const fileCount = item.item.folder.children.filter(child => !(child instanceof TFolder)).length;
+		const subfolderCount = item.item.folder.children.filter(child => 'children' in child).length;
+		const fileCount = item.item.folder.children.filter(child => !('children' in child)).length;
 
 		if (subfolderCount > 0 || fileCount > 0) {
 			const folderStats = infoContainer.createDiv({ cls: 'folder-stats' });

@@ -271,11 +271,6 @@
   width: auto;
   /* デフォルトのアスペクト比 */
   --aspect-ratio: 0.5625;
-  /* サムネイル関連のカスタムプロパティ */
-  --thumbnail-image: none;
-  --thumbnail-size: cover;
-  --thumbnail-position: center;
-  --thumbnail-repeat: no-repeat;
 }
 
 /* GLSLビューワーの後にあるコードブロックのマージンを調整 */
@@ -342,11 +337,15 @@ pre[style*="display: none"] {
   display: none; /* デフォルトは非表示 */
   /* CSS変数でアスペクト比を制御 */
   aspect-ratio: calc(1 / var(--aspect-ratio));
-  /* CSS変数でサムネイル背景を制御 */
-  background-image: var(--thumbnail-image, none);
-  background-size: var(--thumbnail-size, cover);
-  background-position: var(--thumbnail-position, center);
-  background-repeat: var(--thumbnail-repeat, no-repeat);
+  overflow: hidden; /* Ensure thumbnail image fits within bounds */
+}
+
+/* Thumbnail image styling */
+.glsl-viewer-thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .glsl-viewer-placeholder.visible {

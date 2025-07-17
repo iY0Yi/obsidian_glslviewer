@@ -45,7 +45,9 @@ export class ShaderCompiler {
 
 			return { success: true, program: result.program };
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage = (error && typeof error === 'object' && 'message' in error)
+				? (error as Error).message
+				: String(error);
 			return { success: false, error: errorMessage };
 		}
 	}

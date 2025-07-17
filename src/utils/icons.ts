@@ -26,8 +26,9 @@ export function createSVGIconElement(iconName: string): SVGElement | null {
 
 	// Import the SVG element into the current document and ensure it's an SVG element
 	const importedElement = document.importNode(svgElement, true);
-	if (importedElement instanceof SVGElement) {
-		return importedElement;
+	// Check if element is SVG using nodeName instead of instanceof for better type safety
+	if (importedElement && importedElement.nodeName === 'svg') {
+		return importedElement as unknown as SVGElement;
 	}
 	return null;
 }
