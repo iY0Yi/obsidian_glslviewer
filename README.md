@@ -8,7 +8,7 @@ A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering
 ### Shadertoy Compatibility  _(Limited)_
 ![Shadertoy compatibility](assets/imgs/demo_shadertoy.jpg)
 
-*Same syntax as Shadertoy - easily port your creations and reuse code snippets between platforms*
+*Same syntax as [Shadertoy](https://shadertoy.com) - easily port your creations and reuse code snippets between platforms*
 
 ### Custom Textures
 ![Custom Textures](assets/imgs/demo_textures.jpg)
