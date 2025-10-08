@@ -114,7 +114,7 @@ Share complex setups across multiple shaders.
 // @viewer
 // @template: raymarching.glsl
 vec4 map(vec3 p) {
-    float d = length(p) - 0.5;  // Sphere distance function
+    float d = length(p) - .5;  // Sphere distance function
     return vec4(d, COL_S2);     // Return distance and material color
 }
 ```
