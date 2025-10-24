@@ -16,9 +16,10 @@ export class FolderSuggestModal extends FuzzySuggestModal<FolderItem> {
 
 	getItems(): FolderItem[] {
 		return this.app.vault.getAllLoadedFiles()
-			.filter(file => 'children' in file) // TFolder has children property, TFile does not
-			.map(folder => ({
-				folder: folder as TFolder,
+			// Use a proper type guard instead of casting
+			.filter((file): file is TFolder => file instanceof TFolder)
+			.map((folder) => ({
+				folder,
 				path: folder.path === '/' ? '' : folder.path
 			}))
 			.sort((a, b) => a.path.localeCompare(b.path));
