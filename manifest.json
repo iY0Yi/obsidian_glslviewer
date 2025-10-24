@@ -3,7 +3,7 @@
 	"name": "GLSL Viewer",
 	"version": "0.1.3",
 	"minAppVersion": "0.15.0",
-	"description": "Preview GLSL shaders in your notes with WebGL rendering. Supports Shadertoy-style shaders with live preview.",
+	"description": "A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering with Shadertoy-style shader code.",
 	"author": "iY0Yi",
 	"authorUrl": "",
 	"fundingUrl": "",
