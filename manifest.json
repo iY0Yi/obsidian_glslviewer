@@ -1,7 +1,7 @@
 {
 	"id": "glsl-viewer",
 	"name": "GLSL Viewer",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"minAppVersion": "0.15.0",
 	"description": "A GLSL shader preview plugin that enables real-time WebGL rendering with Shadertoy-style shader code.",
 	"author": "iY0Yi",
