@@ -1,6 +1,6 @@
 # GLSL Viewer
 
-Preview GLSL shaders.
+Preview GLSL shaders on Obsidian.
 </br></br></br>
 ## Features
 
