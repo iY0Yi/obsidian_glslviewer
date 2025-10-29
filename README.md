@@ -1,6 +1,6 @@
-﻿# GLSL Viewer Plugin for Obsidian
+# GLSL Viewer
 
-A GLSL shader preview plugin for Obsidian that enables real-time WebGL rendering with Shadertoy-style shader code.
+Preview GLSL shaders with real-time WebGL rendering and Shadertoy-style code.
 </br></br></br>
 ## Features
 
@@ -228,3 +228,4 @@ MIT License
 
 - **Obsidian**: v1.0.0+
 - **Shiki-highlighter**
+

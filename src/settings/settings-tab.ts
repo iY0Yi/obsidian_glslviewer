@@ -1,8 +1,8 @@
-import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
+import { App, PluginSettingTab, Setting, TextComponent, normalizePath } from 'obsidian';
 import { GLSLViewerSettings } from '../types/settings';
-import { ImageFileSuggestModal } from '../ui/file-suggest-modal';
-import { FolderSuggestModal } from '../ui/folder-suggest-modal';
-import { createSVGIconElement } from '../utils/icons';
+import { ImageFileSuggest } from '../ui/image-suggest';
+import { FolderSuggest } from '../ui/folder-suggest';
+import { GLSLIconName, setGLSLIcon } from '../utils/icons';
 import type { Plugin } from 'obsidian';
 import { TFile } from 'obsidian';
 
@@ -20,17 +20,17 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	// Helper method to add icon to button
-	private addIconToButton(buttonEl: HTMLButtonElement, iconName: string): void {
-		const icon = createSVGIconElement(iconName);
-		if (icon) {
-			// Add icon-only class for styling
-			buttonEl.classList.add('icon-only');
+	// Normalize user-provided paths while allowing empty strings
+	private normalizeUserPath(value: string): string {
+		const trimmed = value.trim();
+		return trimmed ? normalizePath(trimmed) : '';
+	}
 
-			// Clear any existing content and add icon
-			buttonEl.textContent = '';
-			buttonEl.appendChild(icon);
-		}
+	// Helper method to add icon to button
+	private addIconToButton(buttonEl: HTMLButtonElement, iconName: GLSLIconName): void {
+		buttonEl.addClass('icon-only');
+		buttonEl.setText('');
+		setGLSLIcon(buttonEl, iconName);
 	}
 
 	// Helper method to create image placeholder (always shown)
@@ -91,12 +91,10 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 	// Helper method to show default image icon
 	private showDefaultImageIcon(container: HTMLElement): void {
-		const icon = createSVGIconElement('imagesmode');
-		if (icon) {
-			container.empty();
-			container.addClass('setting-placeholder-icon');
-			container.appendChild(icon);
-		}
+		container.empty();
+		container.addClass('setting-placeholder-icon');
+		const iconHolder = container.createDiv();
+		setGLSLIcon(iconHolder, 'imagesmode');
 	}
 
 	// Helper method to resolve texture path (same logic as main plugin)
@@ -246,162 +244,153 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Thumbnails Folder setting (highest priority)
 		let thumbnailsFolderTextComponent: TextComponent;
-		new Setting(containerEl)
+		const thumbnailsSetting = new Setting(containerEl)
 			.setName('Thumbnails Folder')
-			.setDesc('Folder for storing generated thumbnails. Thumbnails are automatically created for non-autoplay shaders.')
-			.addText(text => {
-				thumbnailsFolderTextComponent = text;
-				return text
-					.setPlaceholder('GLSL Thumbnails')
-					.setValue(this.plugin.settings.thumbnailsFolder)
-					.onChange(async (value) => {
-						this.plugin.settings.thumbnailsFolder = value;
-						await this.plugin.saveSettings();
-					});
-			})
-			.addButton(button => {
-				const btn = button
-					.setButtonText('')
-					.setTooltip('Browse for folder')
-					.onClick(() => {
-						const modal = new FolderSuggestModal(this.app, (selectedPath) => {
-							thumbnailsFolderTextComponent.setValue(selectedPath);
-							this.plugin.settings.thumbnailsFolder = selectedPath;
-							this.plugin.saveSettings();
-						});
-						modal.open();
-					});
+			.setDesc('Folder for storing generated thumbnails. Thumbnails are automatically created for non-autoplay shaders.');
 
-				// Add folder open icon to browse button
-				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'folder_open');
-				}, 0);
+		thumbnailsSetting.addText(text => {
+			thumbnailsFolderTextComponent = text;
+			return text
+				.setPlaceholder('GLSL Thumbnails')
+				.setValue(this.plugin.settings.thumbnailsFolder)
+				.onChange(async (value) => {
+					const normalized = this.normalizeUserPath(value);
+					if (normalized === this.plugin.settings.thumbnailsFolder) {
+						return;
+					}
+					this.plugin.settings.thumbnailsFolder = normalized;
+					await this.plugin.saveSettings();
+				});
+		});
 
-				return btn;
-			})
-			.addButton(button => {
-				const btn = button
-					.setButtonText('')
-					.setTooltip('Reset to default')
-					.onClick(async () => {
-						this.plugin.settings.thumbnailsFolder = 'GLSL Thumbnails';
-						await this.plugin.saveSettings();
-						thumbnailsFolderTextComponent.setValue('GLSL Thumbnails');
-					});
+		thumbnailsSetting.addButton(button => {
+			const btn = button
+				.setButtonText('')
+				.setTooltip('Reset to default')
+				.onClick(async () => {
+					const normalized = this.normalizeUserPath('GLSL Thumbnails');
+					this.plugin.settings.thumbnailsFolder = normalized;
+					thumbnailsFolderTextComponent.setValue(normalized);
+					await this.plugin.saveSettings();
+				});
 
-				// Add refresh icon to reset button
-				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'refresh');
-				}, 0);
+			setTimeout(() => {
+				this.addIconToButton(btn.buttonEl, 'refresh');
+			}, 0);
 
-				return btn;
-			});
+			return btn;
+		});
+
+		new FolderSuggest(this.app, thumbnailsFolderTextComponent.inputEl, (selectedPath) => {
+			const normalized = this.normalizeUserPath(selectedPath);
+			this.plugin.settings.thumbnailsFolder = normalized;
+			thumbnailsFolderTextComponent.setValue(normalized);
+			void this.plugin.saveSettings();
+		});
 
 		// Texture Folder setting (second priority)
 		let textureFolderTextComponent: TextComponent;
-		new Setting(containerEl)
+		const textureFolderSetting = new Setting(containerEl)
 			.setName('Texture Folder')
-			.setDesc('Base folder for texture paths in @iChannel directives. When set, all texture paths (except shortcuts) are resolved relative to this folder. Also limits texture browsing to this folder.')
-			.addText(text => {
-				textureFolderTextComponent = text;
-				return text
-					.setPlaceholder('assets/textures')
-					.setValue(this.plugin.settings.textureFolder)
-					.onChange(async (value) => {
-						this.plugin.settings.textureFolder = value;
-						await this.plugin.saveSettings();
-					});
-			})
-			.addButton(button => {
-				const btn = button
-					.setButtonText('')
-					.setTooltip('Browse for folder')
-					.onClick(() => {
-						const modal = new FolderSuggestModal(this.app, (selectedPath) => {
-							textureFolderTextComponent.setValue(selectedPath);
-							this.plugin.settings.textureFolder = selectedPath;
-							this.plugin.saveSettings();
-						});
-						modal.open();
-					});
+			.setDesc('Base folder for texture paths in @iChannel directives. When set, all texture paths (except shortcuts) are resolved relative to this folder. Also limits texture browsing to this folder.');
 
-				// Add folder open icon to browse button
-				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'folder_open');
-				}, 0);
+		textureFolderSetting.addText(text => {
+			textureFolderTextComponent = text;
+			return text
+				.setPlaceholder('assets/textures')
+				.setValue(this.plugin.settings.textureFolder)
+				.onChange(async (value) => {
+					const normalized = this.normalizeUserPath(value);
+					if (normalized === this.plugin.settings.textureFolder) {
+						return;
+					}
+					this.plugin.settings.textureFolder = normalized;
+					await this.plugin.saveSettings();
+				});
+		});
 
-				return btn;
-			})
-			.addButton(button => {
-				const btn = button
-					.setButtonText('')
-					.setTooltip('Reset to default (empty)')
-					.onClick(async () => {
-						this.plugin.settings.textureFolder = '';
-						await this.plugin.saveSettings();
+		textureFolderSetting.addButton(button => {
+			const btn = button
+				.setButtonText('')
+				.setTooltip('Reset to default (empty)')
+				.onClick(async () => {
+					if (!this.plugin.settings.textureFolder.length) {
 						textureFolderTextComponent.setValue('');
-					});
+						return;
+					}
+					this.plugin.settings.textureFolder = '';
+					textureFolderTextComponent.setValue('');
+					await this.plugin.saveSettings();
+				});
 
-				// Add refresh icon to reset button (unified with others)
-				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'refresh');
-				}, 0);
+			setTimeout(() => {
+				this.addIconToButton(btn.buttonEl, 'refresh');
+			}, 0);
 
-				return btn;
-			});
+			return btn;
+		});
+
+		new FolderSuggest(this.app, textureFolderTextComponent.inputEl, (selectedPath) => {
+			const normalized = this.normalizeUserPath(selectedPath);
+			if (normalized === this.plugin.settings.textureFolder) {
+				textureFolderTextComponent.setValue(normalized);
+				return;
+			}
+			this.plugin.settings.textureFolder = normalized;
+			textureFolderTextComponent.setValue(normalized);
+			void this.plugin.saveSettings();
+		});
 
 		// Templates Folder setting (third priority)
 		let templatesFolderTextComponent: TextComponent;
-		new Setting(containerEl)
+		const templatesSetting = new Setting(containerEl)
 			.setName('Templates Folder')
-			.setDesc('Folder for storing GLSL templates. Templates enable reusing complex setups across multiple shaders.')
-			.addText(text => {
-				templatesFolderTextComponent = text;
-				return text
-					.setPlaceholder('GLSL Templates')
-					.setValue(this.plugin.settings.templatesFolder)
-					.onChange(async (value) => {
-						this.plugin.settings.templatesFolder = value;
-						await this.plugin.saveSettings();
-					});
-			})
-			.addButton(button => {
-				const btn = button
-					.setButtonText('')
-					.setTooltip('Browse for folder')
-					.onClick(() => {
-						const modal = new FolderSuggestModal(this.app, (selectedPath) => {
-							templatesFolderTextComponent.setValue(selectedPath);
-							this.plugin.settings.templatesFolder = selectedPath;
-							this.plugin.saveSettings();
-						});
-						modal.open();
-					});
+			.setDesc('Folder for storing GLSL templates. Templates enable reusing complex setups across multiple shaders.');
 
-				// Add folder open icon to browse button
-				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'folder_open');
-				}, 0);
+		templatesSetting.addText(text => {
+			templatesFolderTextComponent = text;
+			return text
+				.setPlaceholder('GLSL Templates')
+				.setValue(this.plugin.settings.templatesFolder)
+				.onChange(async (value) => {
+					const normalized = this.normalizeUserPath(value);
+					if (normalized === this.plugin.settings.templatesFolder) {
+						return;
+					}
+					this.plugin.settings.templatesFolder = normalized;
+					await this.plugin.saveSettings();
+				});
+		});
 
-				return btn;
-			})
-			.addButton(button => {
-				const btn = button
-					.setButtonText('')
-					.setTooltip('Reset to default')
-					.onClick(async () => {
-						this.plugin.settings.templatesFolder = 'GLSL Templates';
-						await this.plugin.saveSettings();
-						templatesFolderTextComponent.setValue('GLSL Templates');
-					});
+		templatesSetting.addButton(button => {
+			const btn = button
+				.setButtonText('')
+				.setTooltip('Reset to default')
+				.onClick(async () => {
+					const normalized = this.normalizeUserPath('GLSL Templates');
+					this.plugin.settings.templatesFolder = normalized;
+					templatesFolderTextComponent.setValue(normalized);
+					await this.plugin.saveSettings();
+				});
 
-				// Add refresh icon to reset button
-				setTimeout(() => {
-					this.addIconToButton(btn.buttonEl, 'refresh');
-				}, 0);
+			setTimeout(() => {
+				this.addIconToButton(btn.buttonEl, 'refresh');
+			}, 0);
 
-				return btn;
-			});
+			return btn;
+		});
+
+		new FolderSuggest(this.app, templatesFolderTextComponent.inputEl, (selectedPath) => {
+			const normalized = this.normalizeUserPath(selectedPath);
+			if (normalized === this.plugin.settings.templatesFolder) {
+				templatesFolderTextComponent.setValue(normalized);
+				return;
+			}
+
+			this.plugin.settings.templatesFolder = normalized;
+			templatesFolderTextComponent.setValue(normalized);
+			void this.plugin.saveSettings();
+		});
 
 		// Texture Shortcuts Settings Section (now as main section)
 		containerEl.createEl('h3', { text: 'Texture Shortcuts' });
@@ -465,43 +454,18 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 						.setPlaceholder('path/to/texture.png')
 						.setValue(shortcut.path)
 						.onChange(async (value) => {
-							this.plugin.settings.textureShortcuts[index].path = value;
+							const normalized = this.normalizeUserPath(value);
+							if (this.plugin.settings.textureShortcuts[index].path === normalized) {
+								this.refreshImagePlaceholder(shortcutEl, normalized);
+								return;
+							}
+							this.plugin.settings.textureShortcuts[index].path = normalized;
 							await this.plugin.saveSettings();
 							// Update placeholder
-							this.refreshImagePlaceholder(shortcutEl, value);
+							this.refreshImagePlaceholder(shortcutEl, normalized);
 						});
 				})
-								.addButton(button => {
-					const btn = button
-						.setButtonText('')
-						.setTooltip('Browse for texture file')
-						.onClick(() => {
-							const modal = new ImageFileSuggestModal(this.app, (selectedPath) => {
-								// Convert to relative path if Texture Folder is set
-								let finalPath = selectedPath;
-								if (this.plugin.settings.textureFolder &&
-									this.plugin.settings.textureFolder.trim() &&
-									selectedPath.startsWith(this.plugin.settings.textureFolder + '/')) {
-									finalPath = selectedPath.substring(this.plugin.settings.textureFolder.length + 1);
-								}
-
-								pathComponent.setValue(finalPath);
-								this.plugin.settings.textureShortcuts[index].path = finalPath;
-								this.plugin.saveSettings();
-								// Update placeholder with original absolute path for thumbnail display
-								this.refreshImagePlaceholderWithAbsolutePath(shortcutEl, selectedPath);
-							}, this.plugin.settings.textureFolder);
-							modal.open();
-						});
-
-					// Add folder open icon to browse button
-					setTimeout(() => {
-						this.addIconToButton(btn.buttonEl, 'folder_open');
-					}, 0);
-
-					return btn;
-				})
-								.addButton(button => {
+				.addButton(button => {
 					const btn = button
 						.setButtonText('')
 						.setTooltip('Remove shortcut')
@@ -519,6 +483,34 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 					return btn;
 				});
+
+			new ImageFileSuggest(
+				this.app,
+				pathComponent.inputEl,
+				() => this.plugin.settings.textureFolder,
+				(selectedPath) => {
+					const normalizedSelectedPath = this.normalizeUserPath(selectedPath);
+					const textureFolder = this.plugin.settings.textureFolder;
+					let finalPath = normalizedSelectedPath;
+
+					if (textureFolder && textureFolder.length && normalizedSelectedPath.startsWith(textureFolder + '/')) {
+						finalPath = normalizedSelectedPath.substring(textureFolder.length + 1);
+					}
+
+					finalPath = this.normalizeUserPath(finalPath);
+
+					const previousPath = this.plugin.settings.textureShortcuts[index].path;
+					this.plugin.settings.textureShortcuts[index].path = finalPath;
+					pathComponent.setValue(finalPath);
+
+					if (previousPath !== finalPath) {
+						void this.plugin.saveSettings();
+					}
+
+					// Update placeholder with absolute path for preview
+					this.refreshImagePlaceholderWithAbsolutePath(shortcutEl, normalizedSelectedPath);
+				}
+			);
 
 			// Add CSS classes and labels for better UX
 			const controls = setting.controlEl;
@@ -541,3 +533,5 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		});
 	}
 }
+
+

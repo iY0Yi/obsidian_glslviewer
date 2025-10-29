@@ -1,5 +1,5 @@
 import { ShaderConfig } from '../types/shader-config';
-import { createSVGIconElement } from '../utils/icons';
+import { GLSLIconName, setGLSLIcon } from '../utils/icons';
 
 export class ViewerContainer {
 	private container: HTMLElement;
@@ -9,6 +9,9 @@ export class ViewerContainer {
 	private playButton: HTMLButtonElement | null = null;
 	private stopButton: HTMLButtonElement | null = null;
 	private playOverlay: HTMLButtonElement | null = null;
+	private playButtonIcon: HTMLElement | null = null;
+	private stopButtonIcon: HTMLElement | null = null;
+	private playOverlayIcon: HTMLElement | null = null;
 
 	constructor(config: ShaderConfig, parentEl: HTMLElement) {
 		this.container = this.createContainer(parentEl, config);
@@ -58,28 +61,31 @@ export class ViewerContainer {
 		// Create pause-only button (only shown when playing)
 		this.playButton = document.createElement('button');
 		this.playButton.className = `glsl-viewer-button${config.autoplay ? ' visible' : ''}`;
-		const pauseIcon = createSVGIconElement('pause');
-		if (pauseIcon) {
-			this.playButton.appendChild(pauseIcon);
-		}
+		const playIconContainer = document.createElement('span');
+		playIconContainer.className = 'glsl-viewer-icon';
+		setGLSLIcon(playIconContainer, 'pause');
+		this.playButton.appendChild(playIconContainer);
+		this.playButtonIcon = playIconContainer;
 		this.controls.appendChild(this.playButton);
 
 		// Create stop button (only shown when playing)
 		this.stopButton = document.createElement('button');
 		this.stopButton.className = `glsl-viewer-button${config.autoplay ? ' visible' : ''}`;
-		const stopIcon = createSVGIconElement('stop');
-		if (stopIcon) {
-			this.stopButton.appendChild(stopIcon);
-		}
+		const stopIconContainer = document.createElement('span');
+		stopIconContainer.className = 'glsl-viewer-icon';
+		setGLSLIcon(stopIconContainer, 'stop');
+		this.stopButton.appendChild(stopIconContainer);
+		this.stopButtonIcon = stopIconContainer;
 		this.controls.appendChild(this.stopButton);
 
 		// Create play overlay (always create, but only show initially if not autoplay)
 		this.playOverlay = document.createElement('button');
 		this.playOverlay.className = `glsl-viewer-play-overlay${config.autoplay ? ' hidden' : ''}`;
-		const playIcon = createSVGIconElement('play');
-		if (playIcon) {
-			this.playOverlay.appendChild(playIcon);
-		}
+		const overlayIconContainer = document.createElement('span');
+		overlayIconContainer.className = 'glsl-viewer-icon';
+		setGLSLIcon(overlayIconContainer, 'play');
+		this.playOverlay.appendChild(overlayIconContainer);
+		this.playOverlayIcon = overlayIconContainer;
 		this.container.appendChild(this.playOverlay);
 	}
 
@@ -161,14 +167,9 @@ export class ViewerContainer {
 		}
 	}
 
-	updatePlayButtonIcon(icon: string) {
-		if (this.playButton) {
-			// Clear existing icon and add new one using DOM API
-			this.playButton.textContent = '';
-			const iconElement = createSVGIconElement(icon);
-			if (iconElement) {
-				this.playButton.appendChild(iconElement);
-			}
+	updatePlayButtonIcon(icon: GLSLIconName) {
+		if (this.playButtonIcon) {
+			setGLSLIcon(this.playButtonIcon, icon);
 		}
 	}
 
@@ -184,3 +185,5 @@ export class ViewerContainer {
 		thumbnailImg.src = dataUrl;
 	}
 }
+
+

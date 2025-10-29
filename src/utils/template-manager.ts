@@ -1,13 +1,15 @@
-import { App } from 'obsidian';
+import { App, normalizePath } from 'obsidian';
 import { GLSLViewerSettings } from '../types/settings';
 
 export class TemplateManager {
 	private app: App;
 	private settings: GLSLViewerSettings;
+	private pluginDir: string;
 
-	constructor(app: App, settings: GLSLViewerSettings) {
+	constructor(app: App, settings: GLSLViewerSettings, pluginDir: string) {
 		this.app = app;
 		this.settings = settings;
+		this.pluginDir = pluginDir;
 	}
 
 	/**
@@ -17,9 +19,9 @@ export class TemplateManager {
 		// If user has set a custom folder, use it (relative to vault root)
 		// Otherwise fall back to the old plugin directory for backward compatibility
 		if (this.settings.templatesFolder && this.settings.templatesFolder.trim()) {
-			return this.settings.templatesFolder;
+			return normalizePath(this.settings.templatesFolder.trim());
 		}
-		return `${this.app.vault.configDir}/plugins/glsl-viewer/templates`;
+		return normalizePath(`${this.pluginDir}/templates`);
 	}
 
 	/**
@@ -39,9 +41,10 @@ export class TemplateManager {
 
 				for (const dir of dirs) {
 					currentPath = currentPath ? `${currentPath}/${dir}` : dir;
-					const exists = await adapter.exists(currentPath);
+					const normalizedPath = normalizePath(currentPath);
+					const exists = await adapter.exists(normalizedPath);
 					if (!exists) {
-						await adapter.mkdir(currentPath);
+						await adapter.mkdir(normalizedPath);
 					}
 				}
 			}
@@ -59,13 +62,13 @@ export class TemplateManager {
 			const templatePath = `${this.getTemplatesDir()}/${templateName}`;
 
 			// Check if template exists
-			const exists = await adapter.exists(templatePath);
+			const exists = await adapter.exists(normalizePath(templatePath));
 			if (!exists) {
 				return null;
 			}
 
 			// Read template content
-			const templateContent = await adapter.read(templatePath);
+			const templateContent = await adapter.read(normalizePath(templatePath));
 
 			// Replace placeholder with user code
 			const result = templateContent.replace('@TEMPLATE_LINES', userCode);
@@ -83,7 +86,7 @@ export class TemplateManager {
 		try {
 			const adapter = this.app.vault.adapter;
 			const templatePath = `${this.getTemplatesDir()}/${templateName}`;
-			return await adapter.exists(templatePath);
+			return await adapter.exists(normalizePath(templatePath));
 		} catch (error) {
 			return false;
 		}

@@ -10,7 +10,7 @@
     "id": "glsl-viewer",
     "name": "GLSL Viewer",
     "author": "iY0Yi",
-    "description": "Preview GLSL shaders in your notes with WebGL rendering. Supports Shadertoy-style shaders with live preview.",
+    "description": "Preview GLSL shaders with real-time WebGL rendering and Shadertoy-style code.",
     "repo": "iY0Yi/obsidian_glslviewer"
   }
 ]

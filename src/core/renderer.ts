@@ -2,11 +2,6 @@ import { App } from 'obsidian';
 import { TextureManager } from './texture-manager';
 import { ShaderCompiler } from './shader-compiler';
 
-// Interface to avoid circular dependency with plugin
-export interface RendererPlugin {
-	activeViewers: Set<GLSLRenderer>;
-}
-
 export class GLSLRenderer {
 	private canvas: HTMLCanvasElement | null;
 	private gl: WebGLRenderingContext | null;
@@ -22,7 +17,6 @@ export class GLSLRenderer {
 	private shaderCompiler: ShaderCompiler | null;
 	private app: App | null;
 	public isWebGL2: boolean;
-	private plugin: RendererPlugin | null; // Reference to plugin for cleanup
 	private isDestroyed: boolean = false; // Track if destroy has been called
 
 	// Mouse tracking (Shadertoy compatible)
@@ -34,12 +28,9 @@ export class GLSLRenderer {
 
 	// Store event listeners and observers for cleanup
 	private eventListeners: Array<{element: Element, event: string, handler: EventListener}> = [];
-	private domObserver: MutationObserver | null = null;
-
-	constructor(canvas: HTMLCanvasElement, app: App, plugin: RendererPlugin) {
+	constructor(canvas: HTMLCanvasElement, app: App) {
 		this.canvas = canvas;
 		this.app = app;
-		this.plugin = plugin;
 
 		// Try WebGL2 first, fallback to WebGL1
 		const webgl2Context = canvas.getContext('webgl2') as WebGL2RenderingContext;
@@ -61,9 +52,6 @@ export class GLSLRenderer {
 
 		// Set up mouse tracking
 		this.setupMouseTracking();
-
-		// Set up automatic cleanup when canvas is removed from DOM
-		this.setupDOMObserver();
 	}
 
 	/**
@@ -139,27 +127,6 @@ export class GLSLRenderer {
 				this.mouseOriY = Math.abs(this.mouseOriY) * -1;
 			}
 		});
-	}
-
-	private setupDOMObserver() {
-		if (!this.canvas) return;
-
-		// Use MutationObserver to detect when canvas is removed from DOM
-		this.domObserver = new MutationObserver((mutations) => {
-			mutations.forEach((mutation) => {
-				mutation.removedNodes.forEach((node) => {
-					if (node === this.canvas || (node as Element).contains?.(this.canvas)) {
-						// Canvas was removed from DOM, clean up
-						this.destroy();
-					}
-				});
-			});
-		});
-
-		// Observe the parent container for child removals
-		if (this.canvas.parentNode) {
-			this.domObserver.observe(this.canvas.parentNode, { childList: true, subtree: true });
-		}
 	}
 
 	load(fragmentShader: string): { success: boolean; error?: string } {
@@ -437,12 +404,6 @@ export class GLSLRenderer {
 		});
 		this.eventListeners = [];
 
-		// Disconnect DOM observer
-		if (this.domObserver) {
-			this.domObserver.disconnect();
-			this.domObserver = null;
-		}
-
 		// Clean up WebGL resources
 		if (this.textureManager) {
 			this.textureManager.destroy();
@@ -456,17 +417,11 @@ export class GLSLRenderer {
 		// Clear uniforms references
 		this.uniforms = {};
 
-		// Remove from active viewers list (check if plugin still exists)
-		if (this.plugin && this.plugin.activeViewers) {
-			this.plugin.activeViewers.delete(this);
-		}
-
 		// Clear references to help with garbage collection (now type-safe)
 		this.canvas = null;
 		this.gl = null;
 		this.textureManager = null;
 		this.shaderCompiler = null;
 		this.app = null;
-		this.plugin = null;
 	}
 }

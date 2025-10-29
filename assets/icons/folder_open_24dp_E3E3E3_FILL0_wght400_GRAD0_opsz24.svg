@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640H447l-80-80H160v480l96-320h684L837-217q-8 26-29.5 41.5T760-160H160Zm84-80h516l72-240H316l-72 240Zm0 0 72-240-72 240Zm-84-400v-80 80Z"/></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #e3e3e3;
+      }
+    </style>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.7.1, SVG Export Plug-In . SVG Version: 1.2.0 Build 142)  -->
+  <g>
+    <g id="_レイヤー_1" data-name="レイヤー_1">
+      <path class="cls-1" d="M16.4,80.7c-2.1,0-3.9-.8-5.4-2.3s-2.3-3.3-2.3-5.4V27c0-2.1.8-3.9,2.3-5.4s3.3-2.3,5.4-2.3h23l7.7,7.7h30.7c2.1,0,3.9.8,5.4,2.3s2.3,3.3,2.3,5.4h-41.6l-7.7-7.7h-19.9v46.1l9.2-30.7h65.7l-9.9,32.9c-.5,1.7-1.5,3-2.8,4s-2.9,1.5-4.6,1.5H16.4ZM24.5,73h49.5l6.9-23H31.4l-6.9,23ZM24.5,73l6.9-23-6.9,23ZM16.4,34.6v-7.7,7.7Z"/>
+    </g>
+  </g>
+</svg>

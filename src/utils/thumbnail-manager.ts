@@ -1,14 +1,16 @@
-import { App, TFile, TFolder } from 'obsidian';
+import { App, normalizePath, TFile } from 'obsidian';
 import { ShaderConfig } from '../types/shader-config';
 import { GLSLViewerSettings } from '../types/settings';
 
 export class ThumbnailManager {
 	private app: App;
 	private settings: GLSLViewerSettings;
+	private pluginDir: string;
 
-	constructor(app: App, settings: GLSLViewerSettings) {
+	constructor(app: App, settings: GLSLViewerSettings, pluginDir: string) {
 		this.app = app;
 		this.settings = settings;
+		this.pluginDir = pluginDir;
 	}
 
 	/**
@@ -18,9 +20,9 @@ export class ThumbnailManager {
 		// If user has set a custom folder, use it (relative to vault root)
 		// Otherwise fall back to the old plugin directory for backward compatibility
 		if (this.settings.thumbnailsFolder && this.settings.thumbnailsFolder.trim()) {
-			return this.settings.thumbnailsFolder;
+			return normalizePath(this.settings.thumbnailsFolder.trim());
 		}
-		return `${this.app.vault.configDir}/plugins/glsl-viewer/thumbnails`;
+		return normalizePath(`${this.pluginDir}/thumbnails`);
 	}
 
 	/**
@@ -55,7 +57,7 @@ export class ThumbnailManager {
 	 */
 	private getThumbnailFilePath(shaderCode: string, config?: ShaderConfig): string {
 		const hash = this.generateHash(shaderCode, config);
-		return `${this.getThumbnailDir()}/${hash}.jpg`;
+		return normalizePath(`${this.getThumbnailDir()}/${hash}.jpg`);
 	}
 
 	/**
@@ -75,9 +77,10 @@ export class ThumbnailManager {
 
 				for (const dir of dirs) {
 					currentPath = currentPath ? `${currentPath}/${dir}` : dir;
-					const exists = await adapter.exists(currentPath);
+					const normalizedPath = normalizePath(currentPath);
+					const exists = await adapter.exists(normalizedPath);
 					if (!exists) {
-						await adapter.mkdir(currentPath);
+						await adapter.mkdir(normalizedPath);
 					}
 				}
 			}
@@ -91,7 +94,7 @@ export class ThumbnailManager {
 	 */
 	async thumbnailExists(shaderCode: string, config?: ShaderConfig): Promise<boolean> {
 		const thumbnailPath = this.getThumbnailFilePath(shaderCode, config);
-		return await this.app.vault.adapter.exists(thumbnailPath);
+		return await this.app.vault.adapter.exists(normalizePath(thumbnailPath));
 	}
 
 	/**

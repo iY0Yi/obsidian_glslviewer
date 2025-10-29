@@ -1,14 +1,14 @@
 /* GLSL Viewer Plugin Styles */
 
 /* Image file suggestion modal styles */
-.image-file-suggestion {
+.glsl-viewer-image-suggestion {
   display: flex;
   align-items: center;
   padding: 8px 12px;
   gap: 12px;
 }
 
-.image-file-thumbnail {
+.glsl-viewer-image-thumbnail {
   flex-shrink: 0;
   width: 80px;
   height: 80px;
@@ -20,24 +20,24 @@
   justify-content: center;
 }
 
-.image-thumbnail {
+.glsl-viewer-image-preview {
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 6px;
 }
 
-.image-thumbnail-placeholder {
+.glsl-viewer-image-placeholder {
   font-size: 24px;
   color: var(--text-muted);
 }
 
-.image-file-info {
+.glsl-viewer-image-info {
   flex: 1;
   min-width: 0;
 }
 
-.image-file-name {
+.glsl-viewer-image-name {
   font-weight: 500;
   margin-bottom: 2px;
   white-space: nowrap;
@@ -45,7 +45,7 @@
   text-overflow: ellipsis;
 }
 
-.image-file-path {
+.glsl-viewer-image-path {
   color: var(--text-muted);
   font-size: 0.9em;
   margin-bottom: 2px;
@@ -54,32 +54,32 @@
   text-overflow: ellipsis;
 }
 
-.image-file-size {
+.glsl-viewer-image-size {
   color: var(--text-faint);
   font-size: 0.8em;
 }
 
 /* Folder suggestion modal styles */
-.folder-suggestion {
+.glsl-viewer-folder-suggestion {
   display: flex;
   align-items: center;
   padding: 8px 12px;
   gap: 12px;
 }
 
-.folder-icon {
+.glsl-viewer-folder-icon {
   flex-shrink: 0;
   font-size: 20px;
   width: 24px;
   text-align: center;
 }
 
-.folder-info {
+.glsl-viewer-folder-info {
   flex: 1;
   min-width: 0;
 }
 
-.folder-name {
+.glsl-viewer-folder-name {
   font-weight: 500;
   margin-bottom: 2px;
   white-space: nowrap;
@@ -87,7 +87,7 @@
   text-overflow: ellipsis;
 }
 
-.folder-stats {
+.glsl-viewer-folder-stats {
   color: var(--text-muted);
   font-size: 0.9em;
 }
@@ -311,7 +311,7 @@ pre.glsl-code-with-viewer {
 }
 
 /* GLSLコードブロックが非表示の場合は完全にスペースを消す */
-pre[style*="display: none"] {
+pre.glsl-code-with-viewer[style*="display: none"] {
   display: none !important;
   margin: 0 !important;
 }
@@ -384,9 +384,33 @@ pre[style*="display: none"] {
   height: 20px;
 }
 
+.glsl-viewer-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glsl-viewer-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.glsl-viewer-play-overlay .glsl-viewer-icon svg {
+  width: 48px;
+  height: 48px;
+}
+
 .glsl-viewer-button:hover {
   background: rgba(0, 0, 0, 0.5) !important;
   box-shadow: 0 0 0px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+.glsl-viewer-reading-wrapper {
+  position: relative;
+}
+
+.glsl-reading-mode-code {
+  margin-top: 8px;
 }
 
 .glsl-viewer-play-overlay {
@@ -528,6 +552,7 @@ div:has(.glsl-viewer-container) .expressive-code,
 }
 
 /* Image thumbnail utility class */
-.image-thumbnail-hidden {
+.glsl-viewer-image-hidden {
   display: none;
 }
+

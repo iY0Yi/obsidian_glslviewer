@@ -9,13 +9,15 @@ export class ControlsManager {
 	private isPlaying: boolean;
 	private shaderCode: string;
 	private onCreateRenderer?: (viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) => Promise<GLSLRenderer | null>;
+	private onRendererUpdate?: (renderer: GLSLRenderer | null) => void;
 
 	constructor(
 		viewerContainer: ViewerContainer,
 		glslRenderer: GLSLRenderer,
 		config: ShaderConfig,
 		shaderCode: string,
-		onCreateRenderer?: (viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) => Promise<GLSLRenderer | null>
+		onCreateRenderer?: (viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig) => Promise<GLSLRenderer | null>,
+		onRendererUpdate?: (renderer: GLSLRenderer | null) => void,
 	) {
 		this.viewerContainer = viewerContainer;
 		this.glslRenderer = glslRenderer;
@@ -23,9 +25,12 @@ export class ControlsManager {
 		this.shaderCode = shaderCode;
 		this.isPlaying = config.autoplay;
 		this.onCreateRenderer = onCreateRenderer;
+		this.onRendererUpdate = onRendererUpdate;
 
 		this.setupEventListeners();
 		this.updatePlayButton();
+
+		this.onRendererUpdate?.(this.glslRenderer);
 	}
 
 	private setupEventListeners() {
@@ -66,6 +71,7 @@ export class ControlsManager {
 			if (!this.glslRenderer) {
 				return; // レンダラー作成に失敗
 			}
+			this.onRendererUpdate?.(this.glslRenderer);
 		}
 
 		if (this.glslRenderer) {
@@ -133,6 +139,7 @@ export class ControlsManager {
 		if (this.glslRenderer) {
 			this.glslRenderer.destroy();
 			this.glslRenderer = null; // レンダラーへの参照をクリア
+			this.onRendererUpdate?.(null);
 		}
 
 		// Reset UI to initial state (thumbnail view)
@@ -143,3 +150,7 @@ export class ControlsManager {
 		this.viewerContainer.showPlayOverlay();
 	}
 }
+
+
+
+
