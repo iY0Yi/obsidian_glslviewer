@@ -1,6 +1,6 @@
 # GLSL Viewer
 
-Preview GLSL shaders with real-time WebGL rendering and Shadertoy-style code.
+Preview GLSL shaders on Obsidian.
 </br></br></br>
 ## Features
 
