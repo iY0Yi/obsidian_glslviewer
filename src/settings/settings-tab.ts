@@ -57,14 +57,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 	private async loadImageIntoPlaceholder(container: HTMLElement, imagePath: string): Promise<void> {
 		// Check if file exists using TFile
 		const file = this.app.vault.getAbstractFileByPath(imagePath);
-		if (!file || !('stat' in file)) { // TFile has stat property, TFolder does not
+		if (!(file instanceof TFile)) { // Ensure it's a file, not a folder
 			this.showDefaultImageIcon(container);
 			return;
 		}
 
 		try {
 			// Load image using Obsidian's vault API
-			const arrayBuffer = await this.app.vault.readBinary(file as TFile);
+			const arrayBuffer = await this.app.vault.readBinary(file);
 			const blob = new Blob([arrayBuffer]);
 			const url = URL.createObjectURL(blob);
 
@@ -123,14 +123,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 	private async refreshImagePlaceholder(settingEl: HTMLElement, imagePath: string): Promise<void> {
 		// Find existing placeholder
 		const existingPlaceholder = settingEl.querySelector('.setting-image-placeholder');
-		if (existingPlaceholder) {
+		if (existingPlaceholder instanceof HTMLElement) {
 			// Update the placeholder content
 			if (imagePath && imagePath.trim()) {
 				// Resolve the path for thumbnail display
 				const resolvedPath = this.resolveTexturePath(imagePath);
-				await this.loadImageIntoPlaceholder(existingPlaceholder as HTMLElement, resolvedPath);
+				await this.loadImageIntoPlaceholder(existingPlaceholder, resolvedPath);
 			} else {
-				this.showDefaultImageIcon(existingPlaceholder as HTMLElement);
+				this.showDefaultImageIcon(existingPlaceholder);
 			}
 		} else {
 			// Create new placeholder if it doesn't exist
@@ -143,12 +143,12 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 	private async refreshImagePlaceholderWithAbsolutePath(settingEl: HTMLElement, absolutePath: string): Promise<void> {
 		// Find existing placeholder
 		const existingPlaceholder = settingEl.querySelector('.setting-image-placeholder');
-		if (existingPlaceholder) {
+		if (existingPlaceholder instanceof HTMLElement) {
 			// Update the placeholder content with absolute path directly
 			if (absolutePath && absolutePath.trim()) {
-				await this.loadImageIntoPlaceholder(existingPlaceholder as HTMLElement, absolutePath);
+				await this.loadImageIntoPlaceholder(existingPlaceholder, absolutePath);
 			} else {
-				this.showDefaultImageIcon(existingPlaceholder as HTMLElement);
+				this.showDefaultImageIcon(existingPlaceholder);
 			}
 		} else {
 			// Create new placeholder if it doesn't exist with absolute path
@@ -194,8 +194,8 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 						this.plugin.settings.defaultAspect = 0.5625;
 						await this.plugin.saveSettings();
 						// Update only the input field value instead of refreshing entire display
-						const inputEl = btn.buttonEl.parentElement?.querySelector('input[type="text"]') as HTMLInputElement;
-						if (inputEl) {
+						const inputEl = btn.buttonEl.parentElement?.querySelector('input[type="text"]');
+						if (inputEl instanceof HTMLInputElement) {
 							inputEl.value = '0.5625';
 						}
 					});
@@ -514,14 +514,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 			// Add CSS classes and labels for better UX
 			const controls = setting.controlEl;
-			const keyInput = controls.querySelector('.setting-item-control input:first-of-type') as HTMLInputElement;
-			const pathInput = controls.querySelector('.setting-item-control input:nth-of-type(2)') as HTMLInputElement;
+			const keyInput = controls.querySelector('.setting-item-control input:first-of-type');
+			const pathInput = controls.querySelector('.setting-item-control input:nth-of-type(2)');
 
-			if (keyInput) {
+			if (keyInput instanceof HTMLInputElement) {
 				keyInput.addClass('shortcut-key-input');
 				keyInput.setAttribute('aria-label', 'Shortcut key');
 			}
-			if (pathInput) {
+			if (pathInput instanceof HTMLInputElement) {
 				pathInput.addClass('shortcut-path-input');
 				pathInput.setAttribute('aria-label', 'Texture path');
 			}
