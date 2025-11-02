@@ -2,12 +2,14 @@ import { App } from 'obsidian';
 import { TextureManager } from './texture-manager';
 import { ShaderCompiler } from './shader-compiler';
 
+type DomEventRegistrar = (element: HTMLElement, event: string, handler: EventListener) => void;
+
 export class GLSLRenderer {
-	private canvas: HTMLCanvasElement | null;
-	private gl: WebGLRenderingContext | null;
-	private program: WebGLProgram | null = null;
-	private animationId: number | null = null;
-	// フレームベースの時間管理
+        private canvas: HTMLCanvasElement | null;
+        private gl: WebGLRenderingContext | null;
+        private program: WebGLProgram | null = null;
+        private animationId: number | null = null;
+        // フレームベースの時間管理
 	private currentTime: number = 0.0;
 	private readonly targetFPS: number = 60;
 	private readonly frameDelta: number = 1.0 / 60; // 1/60秒
@@ -27,14 +29,17 @@ export class GLSLRenderer {
 	private mouseIsDown: boolean = false;
 
 	// Store event listeners and observers for cleanup
-	private eventListeners: Array<{element: Element, event: string, handler: EventListener}> = [];
-	constructor(canvas: HTMLCanvasElement, app: App) {
-		this.canvas = canvas;
-		this.app = app;
+        private eventListeners: Array<{element: HTMLElement, event: string, handler: EventListener}> = [];
+        private domEventRegistrar?: DomEventRegistrar;
 
-		// Try WebGL2 first, fallback to WebGL1
-		const webgl2Context = canvas.getContext('webgl2') as WebGL2RenderingContext;
-		if (webgl2Context) {
+        constructor(canvas: HTMLCanvasElement, app: App, domEventRegistrar?: DomEventRegistrar) {
+                this.canvas = canvas;
+                this.app = app;
+                this.domEventRegistrar = domEventRegistrar;
+
+                // Try WebGL2 first, fallback to WebGL1
+                const webgl2Context = canvas.getContext('webgl2') as WebGL2RenderingContext;
+                if (webgl2Context) {
 			this.gl = webgl2Context;
 			this.isWebGL2 = true;
 		} else {
@@ -57,10 +62,14 @@ export class GLSLRenderer {
 	/**
 	 * Add event listener and track it for cleanup
 	 */
-	private addTrackedEventListener(element: Element, event: string, handler: EventListener) {
-		element.addEventListener(event, handler);
-		this.eventListeners.push({element, event, handler});
-	}
+        private addTrackedEventListener(element: HTMLElement, event: string, handler: EventListener) {
+                if (this.domEventRegistrar) {
+                        this.domEventRegistrar(element, event, handler);
+                } else {
+                        element.addEventListener(event, handler);
+                }
+                this.eventListeners.push({element, event, handler});
+        }
 
 	private setupMouseTracking() {
 		if (!this.canvas) return;

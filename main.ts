@@ -314,7 +314,7 @@ export default class GLSLViewerPlugin extends Plugin {
 				}
 			}
 
-			const glslRenderer = new GLSLRenderer(canvas, this.app);
+                        const glslRenderer = new GLSLRenderer(canvas, this.app, child.registerDomEvent.bind(child));
 			child.setRenderer(glslRenderer);
 
 			let processedShaderCode = shaderCode;
@@ -552,7 +552,7 @@ export default class GLSLViewerPlugin extends Plugin {
 		const container = viewerContainer.getContainer();
 
 		try {
-			const glslRenderer = new GLSLRenderer(canvas, this.app);
+                        const glslRenderer = new GLSLRenderer(canvas, this.app, child.registerDomEvent.bind(child));
 			child.setRenderer(glslRenderer);
 
 			let processedShaderCode = shaderCode;
