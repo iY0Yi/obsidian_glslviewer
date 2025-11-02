@@ -166,14 +166,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		// Add specific class to limit CSS scope
 		containerEl.addClass('glsl-viewer-settings');
 
-		containerEl.createEl('h2', { text: 'GLSL Viewer Settings' });
-
-		// Display Settings Section
-		containerEl.createEl('h3', { text: 'Display Settings' });
+                // Display Settings Section
+                new Setting(containerEl)
+                        .setName('Display')
+                        .setHeading();
 
 		// Default Aspect Ratio setting
-		new Setting(containerEl)
-			.setName('Default Aspect Ratio')
+                new Setting(containerEl)
+                        .setName('Default aspect ratio')
 			.setDesc('Default height/width ratio for new GLSL viewers. Common values: 0.5625 (16:9), 0.75 (4:3), 1.0 (square), 1.777 (9:16). Range: 0.1-5.0')
 			.addText(text => text
 				.setPlaceholder('0.5625')
@@ -209,8 +209,8 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			});
 
 		// Default Autoplay setting
-		new Setting(containerEl)
-			.setName('Default Autoplay')
+                new Setting(containerEl)
+                        .setName('Default autoplay')
 			.setDesc('Whether new GLSL viewers should automatically start playing by default. Individual shaders can override this with @autoplay: directive.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.defaultAutoplay)
@@ -221,8 +221,8 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			);
 
 		// Default Hide Code setting
-		new Setting(containerEl)
-			.setName('Default Hide Code')
+                new Setting(containerEl)
+                        .setName('Default hide code')
 			.setDesc('Whether to hide the code block content by default in reading mode. Individual shaders can override this with @hideCode: directive.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.defaultHideCode)
@@ -232,8 +232,10 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				})
 			);
 
-		// Folders Settings Section
-		containerEl.createEl('h3', { text: 'Folders' });
+                // Folders Settings Section
+                new Setting(containerEl)
+                        .setName('Folders')
+                        .setHeading();
 
 		// Add horizontal rule
 		containerEl.createEl('hr', { cls: 'glsl-settings-divider' });
@@ -244,8 +246,8 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Thumbnails Folder setting (highest priority)
 		let thumbnailsFolderTextComponent: TextComponent;
-		const thumbnailsSetting = new Setting(containerEl)
-			.setName('Thumbnails Folder')
+                const thumbnailsSetting = new Setting(containerEl)
+                        .setName('Thumbnails folder')
 			.setDesc('Folder for storing generated thumbnails. Thumbnails are automatically created for non-autoplay shaders.');
 
 		thumbnailsSetting.addText(text => {
@@ -290,8 +292,8 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Texture Folder setting (second priority)
 		let textureFolderTextComponent: TextComponent;
-		const textureFolderSetting = new Setting(containerEl)
-			.setName('Texture Folder')
+                const textureFolderSetting = new Setting(containerEl)
+                        .setName('Texture folder')
 			.setDesc('Base folder for texture paths in @iChannel directives. When set, all texture paths (except shortcuts) are resolved relative to this folder. Also limits texture browsing to this folder.');
 
 		textureFolderSetting.addText(text => {
@@ -343,8 +345,8 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Templates Folder setting (third priority)
 		let templatesFolderTextComponent: TextComponent;
-		const templatesSetting = new Setting(containerEl)
-			.setName('Templates Folder')
+                const templatesSetting = new Setting(containerEl)
+                        .setName('Templates folder')
 			.setDesc('Folder for storing GLSL templates. Templates enable reusing complex setups across multiple shaders.');
 
 		templatesSetting.addText(text => {
@@ -392,8 +394,10 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			void this.plugin.saveSettings();
 		});
 
-		// Texture Shortcuts Settings Section (now as main section)
-		containerEl.createEl('h3', { text: 'Texture Shortcuts' });
+                // Texture Shortcuts Settings Section (now as main section)
+                new Setting(containerEl)
+                        .setName('Texture shortcuts')
+                        .setHeading();
 
 		// Add horizontal rule
 		containerEl.createEl('hr', { cls: 'glsl-settings-divider' });
