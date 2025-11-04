@@ -12,7 +12,7 @@ export class TextureManager {
 	}
 
 	async loadTexture(channelIndex: number, imagePath: string): Promise<boolean> {
-		return new Promise(async (resolve) => {
+		return new Promise((resolve) => {
 			const img = new Image();
 
 			// Resolve Obsidian vault path
@@ -27,7 +27,7 @@ export class TextureManager {
 						resolvedPath = this.app.vault.adapter.getResourcePath(vaultPath);
 					}
 				}
-			} catch (error) {
+			} catch {
 				// Failed to resolve vault path, use original
 			}
 
@@ -68,14 +68,15 @@ export class TextureManager {
 		});
 	}
 
-	bindTextures(uniforms: { [key: string]: WebGLUniformLocation }) {
+	bindTextures(uniforms: Partial<Record<string, WebGLUniformLocation>>) {
 		// Bind textures
 		for (let i = 0; i < 4; i++) {
 			const channelName = `iChannel${i}`;
-			if (this.textures[channelName]) {
+			const uniformLocation = uniforms[channelName];
+			if (this.textures[channelName] && uniformLocation) {
 				this.gl.activeTexture(this.gl.TEXTURE0 + i);
 				this.gl.bindTexture(this.gl.TEXTURE_2D, this.textures[channelName]);
-				this.gl.uniform1i(uniforms[channelName], i);
+				this.gl.uniform1i(uniformLocation, i);
 			}
 		}
 	}

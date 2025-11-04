@@ -44,7 +44,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		if (imagePath && imagePath.trim()) {
 			// Resolve the path and try to load thumbnail
 			const resolvedPath = this.resolveTexturePath(imagePath);
-			this.loadImageIntoPlaceholder(placeholderContainer, resolvedPath);
+			void this.loadImageIntoPlaceholder(placeholderContainer, resolvedPath);
 		} else {
 			// Show default image icon
 			this.showDefaultImageIcon(placeholderContainer);
@@ -178,11 +178,11 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			.addText(text => text
 				.setPlaceholder('0.5625')
 				.setValue(this.plugin.settings.defaultAspect.toString())
-				.onChange(async (value) => {
+				.onChange((value) => {
 					const numValue = parseFloat(value);
 					if (!isNaN(numValue) && numValue >= 0.1 && numValue <= 5.0) {
 						this.plugin.settings.defaultAspect = numValue;
-						await this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 					}
 				})
 			)
@@ -190,9 +190,9 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				const btn = button
 					.setButtonText('')
 					.setTooltip('Reset to default 16:9 (0.5625)')
-					.onClick(async () => {
+					.onClick(() => {
 						this.plugin.settings.defaultAspect = 0.5625;
-						await this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 						// Update only the input field value instead of refreshing entire display
 						const inputEl = btn.buttonEl.parentElement?.querySelector('input[type="text"]');
 						if (inputEl instanceof HTMLInputElement) {
@@ -214,9 +214,9 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			.setDesc('Whether new GLSL viewers should automatically start playing by default. Individual shaders can override this with @autoplay: directive.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.defaultAutoplay)
-				.onChange(async (value) => {
+				.onChange((value) => {
 					this.plugin.settings.defaultAutoplay = value;
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				})
 			);
 
@@ -226,9 +226,9 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			.setDesc('Whether to hide the code block content by default in reading mode. Individual shaders can override this with @hideCode: directive.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.defaultHideCode)
-				.onChange(async (value) => {
+				.onChange((value) => {
 					this.plugin.settings.defaultHideCode = value;
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				})
 			);
 
@@ -255,13 +255,13 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			return text
 				.setPlaceholder('GLSL Thumbnails')
 				.setValue(this.plugin.settings.thumbnailsFolder)
-				.onChange(async (value) => {
+				.onChange((value) => {
 					const normalized = this.normalizeUserPath(value);
 					if (normalized === this.plugin.settings.thumbnailsFolder) {
 						return;
 					}
 					this.plugin.settings.thumbnailsFolder = normalized;
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				});
 		});
 
@@ -269,11 +269,11 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			const btn = button
 				.setButtonText('')
 				.setTooltip('Reset to default')
-				.onClick(async () => {
+				.onClick(() => {
 					const normalized = this.normalizeUserPath('GLSL Thumbnails');
 					this.plugin.settings.thumbnailsFolder = normalized;
 					thumbnailsFolderTextComponent.setValue(normalized);
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				});
 
 			setTimeout(() => {
@@ -301,13 +301,13 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			return text
 				.setPlaceholder('assets/textures')
 				.setValue(this.plugin.settings.textureFolder)
-				.onChange(async (value) => {
+				.onChange((value) => {
 					const normalized = this.normalizeUserPath(value);
 					if (normalized === this.plugin.settings.textureFolder) {
 						return;
 					}
 					this.plugin.settings.textureFolder = normalized;
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				});
 		});
 
@@ -315,14 +315,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			const btn = button
 				.setButtonText('')
 				.setTooltip('Reset to default (empty)')
-				.onClick(async () => {
+				.onClick(() => {
 					if (!this.plugin.settings.textureFolder.length) {
 						textureFolderTextComponent.setValue('');
 						return;
 					}
 					this.plugin.settings.textureFolder = '';
 					textureFolderTextComponent.setValue('');
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				});
 
 			setTimeout(() => {
@@ -354,13 +354,13 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			return text
 				.setPlaceholder('GLSL Templates')
 				.setValue(this.plugin.settings.templatesFolder)
-				.onChange(async (value) => {
+				.onChange((value) => {
 					const normalized = this.normalizeUserPath(value);
 					if (normalized === this.plugin.settings.templatesFolder) {
 						return;
 					}
 					this.plugin.settings.templatesFolder = normalized;
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				});
 		});
 
@@ -368,11 +368,11 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			const btn = button
 				.setButtonText('')
 				.setTooltip('Reset to default')
-				.onClick(async () => {
+				.onClick(() => {
 					const normalized = this.normalizeUserPath('GLSL Templates');
 					this.plugin.settings.templatesFolder = normalized;
 					templatesFolderTextComponent.setValue(normalized);
-					await this.plugin.saveSettings();
+					void this.plugin.saveSettings();
 				});
 
 			setTimeout(() => {
@@ -419,7 +419,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					.setTooltip('Add new texture shortcut')
 					.onClick(() => {
 						this.plugin.settings.textureShortcuts.push({ key: '', path: '' });
-						this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 						this.renderTextureShortcuts(shortcutsContainer);
 					});
 
@@ -438,18 +438,16 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		this.plugin.settings.textureShortcuts.forEach((shortcut, index) => {
 			const shortcutEl = container.createDiv({ cls: 'texture-shortcut-item' });
 
-			let keyComponent: TextComponent;
 			let pathComponent: TextComponent;
 
 			const setting = new Setting(shortcutEl)
 				.addText(text => {
-					keyComponent = text;
 					return text
 						.setPlaceholder('tex1')
 						.setValue(shortcut.key)
-						.onChange(async (value) => {
+						.onChange((value) => {
 							this.plugin.settings.textureShortcuts[index].key = value;
-							await this.plugin.saveSettings();
+							void this.plugin.saveSettings();
 						});
 				})
 				.addText(text => {
@@ -457,16 +455,16 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					return text
 						.setPlaceholder('path/to/texture.png')
 						.setValue(shortcut.path)
-						.onChange(async (value) => {
+						.onChange((value) => {
 							const normalized = this.normalizeUserPath(value);
 							if (this.plugin.settings.textureShortcuts[index].path === normalized) {
-								this.refreshImagePlaceholder(shortcutEl, normalized);
+								void this.refreshImagePlaceholder(shortcutEl, normalized);
 								return;
 							}
 							this.plugin.settings.textureShortcuts[index].path = normalized;
-							await this.plugin.saveSettings();
+							void this.plugin.saveSettings();
 							// Update placeholder
-							this.refreshImagePlaceholder(shortcutEl, normalized);
+							void this.refreshImagePlaceholder(shortcutEl, normalized);
 						});
 				})
 				.addButton(button => {
@@ -474,9 +472,9 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 						.setButtonText('')
 						.setTooltip('Remove shortcut')
 						.setWarning()
-						.onClick(async () => {
+						.onClick(() => {
 							this.plugin.settings.textureShortcuts.splice(index, 1);
-							await this.plugin.saveSettings();
+							void this.plugin.saveSettings();
 							this.renderTextureShortcuts(container);
 						});
 
@@ -512,7 +510,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 					}
 
 					// Update placeholder with absolute path for preview
-					this.refreshImagePlaceholderWithAbsolutePath(shortcutEl, normalizedSelectedPath);
+					void this.refreshImagePlaceholderWithAbsolutePath(shortcutEl, normalizedSelectedPath);
 				}
 			);
 

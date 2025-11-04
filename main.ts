@@ -1,4 +1,12 @@
-import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, App } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
+interface PrismLanguageGrammar {
+	[key: string]: unknown;
+}
+
+interface ObsidianPrism {
+	highlight: (code: string, grammar: PrismLanguageGrammar, language: string) => string;
+	languages: Record<string, PrismLanguageGrammar>;
+}
 import { GLSLViewerSettings, DEFAULT_SETTINGS } from './src/types/settings';
 import { ShaderConfig } from './src/types/shader-config';
 import { wrapShaderCode } from './src/utils/shader-templates';
@@ -135,7 +143,7 @@ export default class GLSLViewerPlugin extends Plugin {
 					}
 				}
 			}
-		} catch (error) {
+		} catch {
 			// Silent handling - thumbnails are optional
 		}
 	}
@@ -150,7 +158,7 @@ export default class GLSLViewerPlugin extends Plugin {
 				// Use CSS variables instead of direct style manipulation
 				viewerContainer.setThumbnail(dataUrl);
 			}
-		} catch (error) {
+		} catch {
 			// Silent handling - thumbnails are optional
 		}
 	}
@@ -368,23 +376,32 @@ export default class GLSLViewerPlugin extends Plugin {
 	 */
 	private setupLazyRenderer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig, child: GLSLViewerChild) {
 		const playOverlay = viewerContainer.getPlayOverlay();
-		if (playOverlay) {
-			const lazyLoadHandler = async () => {
-				playOverlay.removeEventListener('click', lazyLoadHandler);
-				child.registerLazyCleanup();
+			if (playOverlay) {
+				const lazyLoadHandler = () => {
+					playOverlay.removeEventListener('click', lazyLoadHandler);
+					child.registerLazyCleanup();
 
-				viewerContainer.hidePlayOverlay();
+					viewerContainer.hidePlayOverlay();
 
-				viewerContainer.hidePlaceholder();
-				viewerContainer.showCanvas();
+					viewerContainer.hidePlaceholder();
+					viewerContainer.showCanvas();
 
-				const modifiedConfig = { ...config, autoplay: true };
-				await this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child);
-			};
+					const modifiedConfig = { ...config, autoplay: true };
+					const viewerPromise = this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child).catch((error) => {
+						console.error('Failed to create GLSL viewer during lazy load', error);
+						child.setRenderer(null);
+						viewerContainer.showPlaceholder();
+						viewerContainer.hideCanvas();
+						viewerContainer.showPlayOverlay();
+						playOverlay.addEventListener('click', lazyLoadHandler);
+						child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
+					});
+					void viewerPromise;
+				};
 
-			playOverlay.addEventListener('click', lazyLoadHandler);
-			child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
-		}
+				playOverlay.addEventListener('click', lazyLoadHandler);
+				child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
+			}
 	}
 
 	/**
@@ -623,16 +640,6 @@ export default class GLSLViewerPlugin extends Plugin {
 		// Using secure DOM manipulation instead of innerHTML
 		setTimeout(() => {
 			try {
-				// Access Obsidian's global Prism instance with proper type definition
-				interface PrismLanguageGrammar {
-					[key: string]: any;
-				}
-
-				interface ObsidianPrism {
-					highlight: (code: string, grammar: PrismLanguageGrammar, language: string) => string;
-					languages: { [key: string]: PrismLanguageGrammar };
-				}
-
 				// Check if Prism is available in the global scope with type safety
 				if (typeof window !== 'undefined' && 'Prism' in window) {
 					const prism = (window as { Prism?: ObsidianPrism }).Prism;
@@ -664,25 +671,32 @@ export default class GLSLViewerPlugin extends Plugin {
 			}
 		}, 100); // Short delay to ensure Prism has been initialized by Obsidian
 
-		// Add the copy button (standard Obsidian feature)
-		const copyButton = el.createEl('button', {
-			cls: 'copy-code-button'
-		});
-		copyButton.setAttribute('aria-label', 'Copy');
-		copyButton.setText('');
+			// Add the copy button (standard Obsidian feature)
+			const copyButton = el.createEl('button', {
+				cls: 'copy-code-button'
+			});
+			copyButton.setAttribute('aria-label', 'Copy');
+			copyButton.setText('');
 		setGLSLIcon(copyButton, 'copy');
 
 		// Add copy functionality
-		copyButton.addEventListener('click', async (e) => {
-			e.preventDefault();
-			await navigator.clipboard.writeText(source);
-
-			// Show feedback
-			copyButton.setAttribute('aria-label', 'Copied!');
-			setTimeout(() => {
-				copyButton.setAttribute('aria-label', 'Copy');
-			}, 1000);
-		});
+			copyButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				const copyPromise = navigator.clipboard.writeText(source)
+					.then(() => {
+						copyButton.setAttribute('aria-label', 'Copied!');
+						setTimeout(() => {
+							copyButton.setAttribute('aria-label', 'Copy');
+						}, 1000);
+					})
+					.catch(() => {
+						copyButton.setAttribute('aria-label', 'Copy failed');
+						setTimeout(() => {
+							copyButton.setAttribute('aria-label', 'Copy');
+						}, 1000);
+					});
+				void copyPromise;
+			});
 
 		// Add a class to distinguish from viewer blocks for CSS targeting
 		preElement.addClass('glsl-standard-block');
@@ -722,7 +736,7 @@ export default class GLSLViewerPlugin extends Plugin {
 			// Set up lazy loading for when user wants to actually view the shader
 			this.setupLazyRenderer(viewerContainer, shaderCode, config, child);
 
-		} catch (error) {
+		} catch {
 			// Clean up renderer even if thumbnail generation failed
 			glslRenderer.destroy();
 			child.setRenderer(null);

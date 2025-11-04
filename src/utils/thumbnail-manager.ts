@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile } from 'obsidian';
+import { App, normalizePath } from 'obsidian';
 import { ShaderConfig } from '../types/shader-config';
 import { GLSLViewerSettings } from '../types/settings';
 
@@ -84,7 +84,7 @@ export class ThumbnailManager {
 					}
 				}
 			}
-		} catch (error) {
+		} catch {
 			// If folder creation fails, it might already exist
 		}
 	}
@@ -115,7 +115,7 @@ export class ThumbnailManager {
 			await adapter.writeBinary(thumbnailPath, uint8Array);
 
 			return thumbnailPath;
-		} catch (error) {
+		} catch {
 			return null;
 		}
 	}
@@ -153,7 +153,7 @@ export class ThumbnailManager {
 				reader.onerror = () => resolve(null);
 				reader.readAsDataURL(blob);
 			});
-		} catch (error) {
+		} catch {
 			return null;
 		}
 	}

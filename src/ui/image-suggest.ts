@@ -48,7 +48,7 @@ export class ImageFileSuggest extends AbstractInputSuggest<ImageFile> {
 
 		const thumbnailContainer = container.createDiv({ cls: 'glsl-viewer-image-thumbnail' });
 		const thumbnail = thumbnailContainer.createEl('img', { cls: 'glsl-viewer-image-preview' });
-		this.loadThumbnail(item.file, thumbnail);
+		void this.loadThumbnail(item.file, thumbnail);
 
 		const infoContainer = container.createDiv({ cls: 'glsl-viewer-image-info' });
 		const fileName = infoContainer.createDiv({ cls: 'glsl-viewer-image-name' });
@@ -100,7 +100,7 @@ export class ImageFileSuggest extends AbstractInputSuggest<ImageFile> {
 				URL.revokeObjectURL(url);
 				this.showPlaceholder(imgElement);
 			};
-		} catch (error) {
+		} catch {
 			this.showPlaceholder(imgElement);
 		}
 	}

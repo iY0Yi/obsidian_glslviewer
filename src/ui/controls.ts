@@ -56,9 +56,9 @@ export class ControlsManager {
 
 		if (playOverlay) {
 			// Play-only overlay (starts playback)
-			playOverlay.addEventListener('click', async () => {
+			playOverlay.addEventListener('click', () => {
 				if (!this.isPlaying) {
-					await this.play();
+					void this.play();
 				}
 			});
 		}

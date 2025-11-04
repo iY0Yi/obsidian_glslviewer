@@ -48,7 +48,7 @@ export class TemplateManager {
 					}
 				}
 			}
-		} catch (error) {
+		} catch {
 			// Silent handling - templates are optional
 		}
 	}
@@ -74,7 +74,7 @@ export class TemplateManager {
 			const result = templateContent.replace('@TEMPLATE_LINES', userCode);
 
 			return result;
-		} catch (error) {
+		} catch {
 			return null;
 		}
 	}
@@ -87,7 +87,7 @@ export class TemplateManager {
 			const adapter = this.app.vault.adapter;
 			const templatePath = `${this.getTemplatesDir()}/${templateName}`;
 			return await adapter.exists(normalizePath(templatePath));
-		} catch (error) {
+		} catch {
 			return false;
 		}
 	}

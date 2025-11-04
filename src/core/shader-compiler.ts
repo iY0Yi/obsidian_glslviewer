@@ -1,14 +1,10 @@
-export interface CompileResult {
-	success: boolean;
-	error?: string;
-	program?: WebGLProgram;
-}
+export type CompileResult =
+	| { success: true; program: WebGLProgram }
+	| { success: false; error: string };
 
-export interface ShaderResult {
-	success: boolean;
-	error?: string;
-	shader?: WebGLShader;
-}
+export type ShaderResult =
+	| { success: true; shader: WebGLShader }
+	| { success: false; error: string };
 
 export class ShaderCompiler {
 	private gl: WebGLRenderingContext;
@@ -40,49 +36,52 @@ export class ShaderCompiler {
 		try {
 			const result = this.createProgram(vertexShader, fragmentShader);
 			if (!result.success) {
-				return { success: false, error: result.error };
+				return result;
 			}
 
-			return { success: true, program: result.program };
+			return result;
 		} catch (error) {
-			const errorMessage = (error && typeof error === 'object' && 'message' in error)
-				? (error as Error).message
-				: String(error);
-			return { success: false, error: errorMessage };
+		const errorMessage = (error && typeof error === 'object' && 'message' in error)
+			? (error as Error).message
+			: String(error);
+		return { success: false, error: errorMessage };
 		}
 	}
 
 	private createProgram(vertexSource: string, fragmentSource: string): CompileResult {
 		const vertexResult = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
 		if (!vertexResult.success) {
-			return { success: false, error: `Vertex shader error:\n${vertexResult.error}` };
+			const vertexError = 'error' in vertexResult ? vertexResult.error : 'Unknown vertex shader error';
+			return { success: false, error: `Vertex shader error:\n${vertexError}` };
 		}
+		const vertexShader = vertexResult.shader;
 
 		const fragmentResult = this.createShader(this.gl.FRAGMENT_SHADER, fragmentSource);
 		if (!fragmentResult.success) {
-			return { success: false, error: `Fragment shader error:\n${fragmentResult.error}` };
+			const fragmentError = 'error' in fragmentResult ? fragmentResult.error : 'Unknown fragment shader error';
+			return { success: false, error: `Fragment shader error:\n${fragmentError}` };
 		}
+		const fragmentShader = fragmentResult.shader;
 
 		const program = this.gl.createProgram();
 		if (!program) {
 			return { success: false, error: 'Failed to create WebGL program' };
 		}
 
-		this.gl.attachShader(program, vertexResult.shader!);
-		this.gl.attachShader(program, fragmentResult.shader!);
+		this.gl.attachShader(program, vertexShader);
+		this.gl.attachShader(program, fragmentShader);
 		this.gl.linkProgram(program);
 
 		if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
 			const rawLinkError = this.gl.getProgramInfoLog(program) || 'Unknown link error';
-			// Remove control characters except newlines (\n, \r)
-			const linkError = rawLinkError.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '').trim();
+			const linkError = ShaderCompiler.sanitizeMessage(rawLinkError);
 			this.gl.deleteProgram(program);
 			return { success: false, error: `Program link error:\n${linkError}` };
 		}
 
 		// Clean up shaders (they're no longer needed after linking)
-		this.gl.deleteShader(vertexResult.shader!);
-		this.gl.deleteShader(fragmentResult.shader!);
+		this.gl.deleteShader(vertexShader);
+		this.gl.deleteShader(fragmentShader);
 
 		return { success: true, program };
 	}
@@ -98,8 +97,7 @@ export class ShaderCompiler {
 
 		if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
 			const rawError = this.gl.getShaderInfoLog(shader) || 'Unknown compilation error';
-			// Remove control characters except newlines (\n, \r)
-			const compileError = rawError.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '').trim();
+			const compileError = ShaderCompiler.sanitizeMessage(rawError);
 			this.gl.deleteShader(shader);
 			return { success: false, error: compileError };
 		}
@@ -108,7 +106,24 @@ export class ShaderCompiler {
 	}
 
 	static cleanErrorMessage(error: string): string {
-		// Remove control characters except newlines (\n, \r)
-		return error.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '').trim();
+		return ShaderCompiler.sanitizeMessage(error);
+	}
+
+	private static sanitizeMessage(message: string): string {
+		let sanitized = '';
+		for (let i = 0; i < message.length; i++) {
+			const char = message[i];
+			const code = char.charCodeAt(0);
+			const isControlCharacter =
+				(code >= 0x00 && code <= 0x08) ||
+				code === 0x0B ||
+				code === 0x0C ||
+				(code >= 0x0E && code <= 0x1F) ||
+				(code >= 0x7F && code <= 0x9F);
+			if (!isControlCharacter) {
+				sanitized += char;
+			}
+		}
+		return sanitized.trim();
 	}
 }

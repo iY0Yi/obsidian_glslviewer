@@ -4,6 +4,25 @@ import { ShaderCompiler } from './shader-compiler';
 
 type DomEventRegistrar = (element: HTMLElement, event: string, handler: EventListener) => void;
 
+const isWebGL2Context = (context: unknown): context is WebGL2RenderingContext =>
+	typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext;
+
+const isWebGLContext = (context: unknown): context is WebGLRenderingContext =>
+	typeof WebGLRenderingContext !== 'undefined' && context instanceof WebGLRenderingContext;
+
+type ShaderUniformName =
+	| 'iResolution'
+	| 'iTime'
+	| 'iTimeDelta'
+	| 'iFrame'
+	| 'iMouse'
+	| 'iDate'
+	| 'iChannel0'
+	| 'iChannel1'
+	| 'iChannel2'
+	| 'iChannel3'
+	| 'iChannelResolution';
+
 export class GLSLRenderer {
         private canvas: HTMLCanvasElement | null;
         private gl: WebGLRenderingContext | null;
@@ -14,7 +33,7 @@ export class GLSLRenderer {
 	private readonly targetFPS: number = 60;
 	private readonly frameDelta: number = 1.0 / 60; // 1/60秒
 	private frameCount: number = 0;
-	private uniforms: { [key: string]: WebGLUniformLocation } = {};
+	private uniforms: Partial<Record<ShaderUniformName, WebGLUniformLocation>> = {};
 	private textureManager: TextureManager | null;
 	private shaderCompiler: ShaderCompiler | null;
 	private app: App | null;
@@ -38,22 +57,27 @@ export class GLSLRenderer {
                 this.domEventRegistrar = domEventRegistrar;
 
                 // Try WebGL2 first, fallback to WebGL1
-                const webgl2Context = canvas.getContext('webgl2') as WebGL2RenderingContext;
-                if (webgl2Context) {
-			this.gl = webgl2Context;
+                const requestedWebGL2 = canvas.getContext('webgl2');
+                if (isWebGL2Context(requestedWebGL2)) {
+			this.gl = requestedWebGL2;
 			this.isWebGL2 = true;
 		} else {
-			const webgl1Context = canvas.getContext('webgl') as WebGLRenderingContext || canvas.getContext('experimental-webgl') as WebGLRenderingContext;
-			if (!webgl1Context) {
+			const requestedWebGL = canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl');
+			if (!isWebGLContext(requestedWebGL)) {
 				throw new Error('WebGL not supported');
 			}
-			this.gl = webgl1Context;
+			this.gl = requestedWebGL;
 			this.isWebGL2 = false;
 		}
 
+		const gl = this.gl;
+		if (!gl) {
+			throw new Error('WebGL context initialization failed');
+		}
+
 		// Initialize managers
-		this.textureManager = new TextureManager(this.gl, this.app);
-		this.shaderCompiler = new ShaderCompiler(this.gl, this.isWebGL2);
+		this.textureManager = new TextureManager(gl, this.app);
+		this.shaderCompiler = new ShaderCompiler(gl, this.isWebGL2);
 
 		// Set up mouse tracking
 		this.setupMouseTracking();
@@ -139,44 +163,66 @@ export class GLSLRenderer {
 	}
 
 	load(fragmentShader: string): { success: boolean; error?: string } {
-		const result = this.shaderCompiler.compileProgram(fragmentShader);
-		if (!result.success) {
-			return { success: false, error: result.error };
+		if (!this.shaderCompiler) {
+			return { success: false, error: 'Renderer not initialized' };
 		}
 
-		this.program = result.program!;
-		this.setupUniforms();
-		this.setupGeometry();
-		return { success: true };
+		try {
+			const result = this.shaderCompiler.compileProgram(fragmentShader);
+			if (!result.success) {
+				return result;
+			}
+
+			this.program = result.program;
+			this.setupUniforms();
+			this.setupGeometry();
+			return { success: true };
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			return { success: false, error: errorMessage };
+		}
 	}
 
 	private setupUniforms() {
-		if (!this.program || !this.gl) return;
+		if (!this.program || !this.gl) {
+			throw new Error('Renderer not initialized');
+		}
 
+		const program = this.program;
 		const gl = this.gl;
-		gl.useProgram(this.program);
+		gl.useProgram(program);
+
+		const assignUniform = (uniformName: ShaderUniformName) => {
+			const location = gl.getUniformLocation(program, uniformName);
+			if (location) {
+				this.uniforms[uniformName] = location;
+			}
+		};
 
 		// Get uniform locations (Shadertoy standard uniforms)
-		this.uniforms.iResolution = gl.getUniformLocation(this.program, 'iResolution')!;
-		this.uniforms.iTime = gl.getUniformLocation(this.program, 'iTime')!;
-		this.uniforms.iTimeDelta = gl.getUniformLocation(this.program, 'iTimeDelta')!;
-		this.uniforms.iFrame = gl.getUniformLocation(this.program, 'iFrame')!;
-		this.uniforms.iMouse = gl.getUniformLocation(this.program, 'iMouse')!;
-		this.uniforms.iDate = gl.getUniformLocation(this.program, 'iDate')!;
+		assignUniform('iResolution');
+		assignUniform('iTime');
+		assignUniform('iTimeDelta');
+		assignUniform('iFrame');
+		assignUniform('iMouse');
+		assignUniform('iDate');
 
 		// Texture uniforms
-		this.uniforms.iChannel0 = gl.getUniformLocation(this.program, 'iChannel0')!;
-		this.uniforms.iChannel1 = gl.getUniformLocation(this.program, 'iChannel1')!;
-		this.uniforms.iChannel2 = gl.getUniformLocation(this.program, 'iChannel2')!;
-		this.uniforms.iChannel3 = gl.getUniformLocation(this.program, 'iChannel3')!;
+		assignUniform('iChannel0');
+		assignUniform('iChannel1');
+		assignUniform('iChannel2');
+		assignUniform('iChannel3');
 
 		// Texture resolution uniforms
-		this.uniforms.iChannelResolution = gl.getUniformLocation(this.program, 'iChannelResolution')!;
+		assignUniform('iChannelResolution');
 	}
 
 	private setupGeometry() {
-		if (!this.program || !this.gl) return;
+		if (!this.program || !this.gl) {
+			throw new Error('Renderer not initialized');
+		}
 
+		const program = this.program;
 		const gl = this.gl;
 
 		// Create a full-screen quad
@@ -192,7 +238,10 @@ export class GLSLRenderer {
 		gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
 		// WebGL1/2 both use the same attribute functions, but attribute name is 'position'
-		const positionLocation = gl.getAttribLocation(this.program!, 'position');
+		const positionLocation = gl.getAttribLocation(program, 'position');
+		if (positionLocation === -1) {
+			throw new Error('Required attribute position not found');
+		}
 		gl.enableVertexAttribArray(positionLocation);
 		gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 	}
@@ -236,22 +285,40 @@ export class GLSLRenderer {
 		this.frameCount++;
 
 		// Shadertoy standard uniforms
-		gl.uniform3f(this.uniforms.iResolution, this.canvas.width, this.canvas.height, 1.0);
-		gl.uniform1f(this.uniforms.iTime, this.currentTime);
-		gl.uniform1f(this.uniforms.iTimeDelta, this.frameDelta);
-		gl.uniform1i(this.uniforms.iFrame, this.frameCount);
+		const resolutionUniform = this.uniforms.iResolution;
+		if (resolutionUniform) {
+			gl.uniform3f(resolutionUniform, this.canvas.width, this.canvas.height, 1.0);
+		}
+		const timeUniform = this.uniforms.iTime;
+		if (timeUniform) {
+			gl.uniform1f(timeUniform, this.currentTime);
+		}
+		const timeDeltaUniform = this.uniforms.iTimeDelta;
+		if (timeDeltaUniform) {
+			gl.uniform1f(timeDeltaUniform, this.frameDelta);
+		}
+		const frameUniform = this.uniforms.iFrame;
+		if (frameUniform) {
+			gl.uniform1i(frameUniform, this.frameCount);
+		}
 
 		// Mouse position (Shadertoy compatible)
-		gl.uniform4f(this.uniforms.iMouse, this.mousePosX, this.mousePosY, this.mouseOriX, this.mouseOriY);
+		const mouseUniform = this.uniforms.iMouse;
+		if (mouseUniform) {
+			gl.uniform4f(mouseUniform, this.mousePosX, this.mousePosY, this.mouseOriX, this.mouseOriY);
+		}
 
 		// Date uniform (year, month, day, seconds)
-		const now = new Date();
-		gl.uniform4f(this.uniforms.iDate,
-			now.getFullYear(),
-			now.getMonth(),
-			now.getDate(),
-			now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
-		);
+		const dateUniform = this.uniforms.iDate;
+		if (dateUniform) {
+			const now = new Date();
+			gl.uniform4f(dateUniform,
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate(),
+				now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+			);
+		}
 
 		// Bind textures
 		if (this.textureManager) {
@@ -273,7 +340,8 @@ export class GLSLRenderer {
 	}
 
 	private updateTextureResolutions() {
-		if (!this.program || !this.uniforms.iChannelResolution || !this.gl || !this.textureManager) return;
+		const channelResolutionUniform = this.uniforms.iChannelResolution;
+		if (!this.program || !channelResolutionUniform || !this.gl || !this.textureManager) return;
 
 		// Create array for all channel resolutions [iChannel0, iChannel1, iChannel2, iChannel3]
 		const resolutions: number[] = [];
@@ -283,7 +351,7 @@ export class GLSLRenderer {
 		}
 
 		// Send as vec3 array to shader
-		this.gl.uniform3fv(this.uniforms.iChannelResolution, resolutions);
+		this.gl.uniform3fv(channelResolutionUniform, resolutions);
 	}
 
 	/**
@@ -310,7 +378,7 @@ export class GLSLRenderer {
 					resolve(blob);
 				}, 'image/jpeg', quality);
 			});
-		} catch (error) {
+		} catch {
 			return null;
 		}
 	}
@@ -340,7 +408,7 @@ export class GLSLRenderer {
 					resolve(blob);
 				}, 'image/jpeg', quality);
 			});
-		} catch (error) {
+		} catch {
 			return null;
 		}
 	}
@@ -359,22 +427,40 @@ export class GLSLRenderer {
 		gl.viewport(0, 0, this.canvas.width, this.canvas.height);
 
 		// Update uniforms with specified time
-		gl.uniform3f(this.uniforms.iResolution, this.canvas.width, this.canvas.height, 1.0);
-		gl.uniform1f(this.uniforms.iTime, timeSeconds);
-		gl.uniform1f(this.uniforms.iTimeDelta, 0.016); // Assume ~60fps
-		gl.uniform1i(this.uniforms.iFrame, Math.floor(timeSeconds * 60)); // Approximate frame count
+		const resolutionUniform = this.uniforms.iResolution;
+		if (resolutionUniform) {
+			gl.uniform3f(resolutionUniform, this.canvas.width, this.canvas.height, 1.0);
+		}
+		const timeUniform = this.uniforms.iTime;
+		if (timeUniform) {
+			gl.uniform1f(timeUniform, timeSeconds);
+		}
+		const timeDeltaUniform = this.uniforms.iTimeDelta;
+		if (timeDeltaUniform) {
+			gl.uniform1f(timeDeltaUniform, 0.016); // Assume ~60fps
+		}
+		const frameUniform = this.uniforms.iFrame;
+		if (frameUniform) {
+			gl.uniform1i(frameUniform, Math.floor(timeSeconds * 60)); // Approximate frame count
+		}
 
 		// Mouse position (use current values)
-		gl.uniform4f(this.uniforms.iMouse, this.mousePosX, this.mousePosY, this.mouseOriX, this.mouseOriY);
+		const mouseUniform = this.uniforms.iMouse;
+		if (mouseUniform) {
+			gl.uniform4f(mouseUniform, this.mousePosX, this.mousePosY, this.mouseOriX, this.mouseOriY);
+		}
 
 		// Date uniform (use current date)
-		const now = new Date();
-		gl.uniform4f(this.uniforms.iDate,
-			now.getFullYear(),
-			now.getMonth(),
-			now.getDate(),
-			now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
-		);
+		const dateUniform = this.uniforms.iDate;
+		if (dateUniform) {
+			const now = new Date();
+			gl.uniform4f(dateUniform,
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate(),
+				now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+			);
+		}
 
 		// Bind textures
 		if (this.textureManager) {
