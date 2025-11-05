@@ -40,6 +40,12 @@ export default [
     rules: {
       "obsidianmd/sample-names": "off",
       "obsidianmd/prefer-file-manager-trash-file": "error",
+      "obsidianmd/ui/sentence-case": [
+        "error",
+        {
+          brands: ["GLSL"],
+        },
+      ],
     },
   },
 ];

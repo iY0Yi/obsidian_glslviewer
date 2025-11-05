@@ -209,9 +209,9 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			});
 
 		// Default Autoplay setting
-                new Setting(containerEl)
-                        .setName('Default autoplay')
-			.setDesc('Whether new GLSL viewers should automatically start playing by default. Individual shaders can override this with @autoplay: directive.')
+			new Setting(containerEl)
+				.setName('Default autoplay')
+				.setDesc('Whether new shader viewers should start playing automatically by default (override with the @autoplay directive).')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.defaultAutoplay)
 				.onChange((value) => {
@@ -221,9 +221,9 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			);
 
 		// Default Hide Code setting
-                new Setting(containerEl)
-                        .setName('Default hide code')
-			.setDesc('Whether to hide the code block content by default in reading mode. Individual shaders can override this with @hideCode: directive.')
+			new Setting(containerEl)
+				.setName('Default hide code')
+				.setDesc('Whether to hide the code block content by default in reading mode (override with the @hideCode directive).')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.defaultHideCode)
 				.onChange((value) => {
@@ -246,14 +246,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Thumbnails Folder setting (highest priority)
 		let thumbnailsFolderTextComponent: TextComponent;
-                const thumbnailsSetting = new Setting(containerEl)
-                        .setName('Thumbnails folder')
-			.setDesc('Folder for storing generated thumbnails. Thumbnails are automatically created for non-autoplay shaders.');
+		const thumbnailsSetting = new Setting(containerEl)
+		        .setName('Thumbnails folder')
+			.setDesc('Folder for storing generated thumbnails (created automatically for non-autoplay shaders).');
 
 		thumbnailsSetting.addText(text => {
 			thumbnailsFolderTextComponent = text;
 			return text
-				.setPlaceholder('GLSL Thumbnails')
+					.setPlaceholder('GLSL thumbnails')
 				.setValue(this.plugin.settings.thumbnailsFolder)
 				.onChange((value) => {
 					const normalized = this.normalizeUserPath(value);
@@ -270,7 +270,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				.setButtonText('')
 				.setTooltip('Reset to default')
 				.onClick(() => {
-					const normalized = this.normalizeUserPath('GLSL Thumbnails');
+						const normalized = this.normalizeUserPath('GLSL thumbnails');
 					this.plugin.settings.thumbnailsFolder = normalized;
 					thumbnailsFolderTextComponent.setValue(normalized);
 					void this.plugin.saveSettings();
@@ -292,14 +292,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Texture Folder setting (second priority)
 		let textureFolderTextComponent: TextComponent;
-                const textureFolderSetting = new Setting(containerEl)
-                        .setName('Texture folder')
-			.setDesc('Base folder for texture paths in @iChannel directives. When set, all texture paths (except shortcuts) are resolved relative to this folder. Also limits texture browsing to this folder.');
+		const textureFolderSetting = new Setting(containerEl)
+		        .setName('Texture folder')
+			.setDesc('Base folder for texture paths in @iChannel directives (all paths except shortcuts are resolved relative to this folder and texture browsing is limited to it).');
 
 		textureFolderSetting.addText(text => {
 			textureFolderTextComponent = text;
 			return text
-				.setPlaceholder('assets/textures')
+				.setPlaceholder('Set your texture folder.')
 				.setValue(this.plugin.settings.textureFolder)
 				.onChange((value) => {
 					const normalized = this.normalizeUserPath(value);
@@ -345,14 +345,14 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 
 		// Templates Folder setting (third priority)
 		let templatesFolderTextComponent: TextComponent;
-                const templatesSetting = new Setting(containerEl)
-                        .setName('Templates folder')
-			.setDesc('Folder for storing GLSL templates. Templates enable reusing complex setups across multiple shaders.');
+		const templatesSetting = new Setting(containerEl)
+		        .setName('Templates folder')
+			.setDesc('Folder for storing reusable shader templates.');
 
 		templatesSetting.addText(text => {
 			templatesFolderTextComponent = text;
 			return text
-				.setPlaceholder('GLSL Templates')
+					.setPlaceholder('GLSL templates')
 				.setValue(this.plugin.settings.templatesFolder)
 				.onChange((value) => {
 					const normalized = this.normalizeUserPath(value);
@@ -369,7 +369,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				.setButtonText('')
 				.setTooltip('Reset to default')
 				.onClick(() => {
-					const normalized = this.normalizeUserPath('GLSL Templates');
+						const normalized = this.normalizeUserPath('GLSL templates');
 					this.plugin.settings.templatesFolder = normalized;
 					templatesFolderTextComponent.setValue(normalized);
 					void this.plugin.saveSettings();
@@ -402,7 +402,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		// Add horizontal rule
 		containerEl.createEl('hr', { cls: 'glsl-settings-divider' });
 		const shortcutDesc = containerEl.createEl('div', { cls: 'setting-item-description' });
-		shortcutDesc.createEl('p').textContent = 'Create shortcuts for frequently used textures. Use shortcut keys in @iChannel directives (e.g., @iChannel0: tex1).';
+		shortcutDesc.createEl('p').textContent = 'Create shortcuts for frequently used textures (for example, use @iChannel0 tex1).';
 
 		// Shortcuts container
 		const shortcutsContainer = containerEl.createDiv({ cls: 'texture-shortcuts-container' });
@@ -443,7 +443,7 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 			const setting = new Setting(shortcutEl)
 				.addText(text => {
 					return text
-						.setPlaceholder('tex1')
+						.setPlaceholder('Set shorthand name')
 						.setValue(shortcut.key)
 						.onChange((value) => {
 							this.plugin.settings.textureShortcuts[index].key = value;

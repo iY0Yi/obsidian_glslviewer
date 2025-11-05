@@ -16,7 +16,7 @@ export class ErrorDisplay {
 		// Create title
 		const titleDiv = document.createElement('div');
 		titleDiv.className = 'glsl-viewer-error-title';
-		titleDiv.textContent = 'GLSL shader error';
+		titleDiv.textContent = 'Shader error';
 
 		// Create message
 		const messageDiv = document.createElement('div');

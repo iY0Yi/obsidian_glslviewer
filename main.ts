@@ -109,7 +109,15 @@ export default class GLSLViewerPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const storedSettings: unknown = await this.loadData();
+		if (isPartialGLSLSettings(storedSettings)) {
+			this.settings = {
+				...DEFAULT_SETTINGS,
+				...storedSettings,
+			};
+		} else {
+			this.settings = { ...DEFAULT_SETTINGS };
+		}
 	}
 
 	async saveSettings() {
@@ -322,7 +330,10 @@ export default class GLSLViewerPlugin extends Plugin {
 				}
 			}
 
-                        const glslRenderer = new GLSLRenderer(canvas, this.app, child.registerDomEvent.bind(child));
+			const registerDomEvent = (element: HTMLElement, event: string, handler: EventListener) => {
+				child.registerDomEvent(element, event, handler);
+			};
+			const glslRenderer = new GLSLRenderer(canvas, this.app, registerDomEvent);
 			child.setRenderer(glslRenderer);
 
 			let processedShaderCode = shaderCode;
@@ -569,7 +580,10 @@ export default class GLSLViewerPlugin extends Plugin {
 		const container = viewerContainer.getContainer();
 
 		try {
-                        const glslRenderer = new GLSLRenderer(canvas, this.app, child.registerDomEvent.bind(child));
+			const registerDomEvent = (element: HTMLElement, event: string, handler: EventListener) => {
+				child.registerDomEvent(element, event, handler);
+			};
+			const glslRenderer = new GLSLRenderer(canvas, this.app, registerDomEvent);
 			child.setRenderer(glslRenderer);
 
 			let processedShaderCode = shaderCode;
@@ -753,3 +767,6 @@ export default class GLSLViewerPlugin extends Plugin {
 
 
 
+function isPartialGLSLSettings(value: unknown): value is Partial<GLSLViewerSettings> {
+	return typeof value === 'object' && value !== null;
+}
