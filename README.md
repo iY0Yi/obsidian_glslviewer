@@ -229,3 +229,4 @@ MIT License
 - **Obsidian**: v1.0.0+
 - **Shiki-highlighter**
 
+
