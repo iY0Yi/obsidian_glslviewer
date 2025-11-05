@@ -2,7 +2,12 @@ import { App } from 'obsidian';
 import { TextureManager } from './texture-manager';
 import { ShaderCompiler } from './shader-compiler';
 
-type DomEventRegistrar = (element: HTMLElement, event: string, handler: EventListener) => void;
+export type DomEventRegistrar = <K extends keyof HTMLElementEventMap>(
+	element: HTMLElement,
+	event: K,
+	handler: (this: HTMLElement, ev: HTMLElementEventMap[K]) => void,
+	options?: boolean | AddEventListenerOptions,
+) => void;
 
 const isWebGL2Context = (context: unknown): context is WebGL2RenderingContext =>
 	typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext;
@@ -48,7 +53,7 @@ export class GLSLRenderer {
 	private mouseIsDown: boolean = false;
 
 	// Store event listeners and observers for cleanup
-        private eventListeners: Array<{element: HTMLElement, event: string, handler: EventListener}> = [];
+        private eventListeners: Array<{element: HTMLElement, event: keyof HTMLElementEventMap, handler: EventListener}> = [];
         private domEventRegistrar?: DomEventRegistrar;
 
         constructor(canvas: HTMLCanvasElement, app: App, domEventRegistrar?: DomEventRegistrar) {
@@ -86,13 +91,14 @@ export class GLSLRenderer {
 	/**
 	 * Add event listener and track it for cleanup
 	 */
-        private addTrackedEventListener(element: HTMLElement, event: string, handler: EventListener) {
+        private addTrackedEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, event: K, handler: (ev: HTMLElementEventMap[K]) => void) {
+                const wrappedHandler = handler as unknown as EventListener;
                 if (this.domEventRegistrar) {
-                        this.domEventRegistrar(element, event, handler);
+                        this.domEventRegistrar(element, event, handler as (this: HTMLElement, ev: HTMLElementEventMap[K]) => void);
                 } else {
-                        element.addEventListener(event, handler);
+                        element.addEventListener(event, wrappedHandler);
                 }
-                this.eventListeners.push({element, event, handler});
+                this.eventListeners.push({element, event, handler: wrappedHandler});
         }
 
 	private setupMouseTracking() {
@@ -118,8 +124,7 @@ export class GLSLRenderer {
 		};
 
 		// Use tracked event listeners for proper cleanup
-		this.addTrackedEventListener(this.canvas, 'mousedown', (ev: Event) => {
-			const mouseEvent = ev as MouseEvent;
+		this.addTrackedEventListener(this.canvas, 'mousedown', (mouseEvent) => {
 			if (mouseEvent.button === 2 || !onCanvas(mouseEvent)) return; // Skip right click or outside canvas
 
 			this.mouseIsDown = true;
@@ -129,8 +134,7 @@ export class GLSLRenderer {
 			this.mousePosY = this.mouseOriY;
 		});
 
-		this.addTrackedEventListener(this.canvas, 'mouseup', (ev: Event) => {
-			const mouseEvent = ev as MouseEvent;
+		this.addTrackedEventListener(this.canvas, 'mouseup', (mouseEvent) => {
 			if (!onCanvas(mouseEvent)) return;
 
 			this.mouseIsDown = false;
@@ -139,8 +143,7 @@ export class GLSLRenderer {
 			this.mouseOriY = Math.abs(this.mouseOriY) * -1;
 		});
 
-		this.addTrackedEventListener(this.canvas, 'mousemove', (ev: Event) => {
-			const mouseEvent = ev as MouseEvent;
+		this.addTrackedEventListener(this.canvas, 'mousemove', (mouseEvent) => {
 			if (!onCanvas(mouseEvent)) return;
 
 			if (this.mouseIsDown) {

@@ -7,15 +7,15 @@ import type { Plugin } from 'obsidian';
 import { TFile } from 'obsidian';
 
 // Type for the plugin reference
-interface GLSLViewerPlugin extends Plugin {
+interface GLSLViewerPluginApi extends Plugin {
 	settings: GLSLViewerSettings;
 	saveSettings(): Promise<void>;
 }
 
 export class GLSLViewerSettingTab extends PluginSettingTab {
-	plugin: GLSLViewerPlugin;
+	plugin: GLSLViewerPluginApi;
 
-	constructor(app: App, plugin: GLSLViewerPlugin) {
+	constructor(app: App, plugin: GLSLViewerPluginApi) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}

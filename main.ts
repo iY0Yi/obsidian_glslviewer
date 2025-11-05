@@ -12,6 +12,7 @@ import { ShaderConfig } from './src/types/shader-config';
 import { wrapShaderCode } from './src/utils/shader-templates';
 import { GLSLViewerSettingTab } from './src/settings/settings-tab';
 import { GLSLRenderer } from './src/core/renderer';
+import type { DomEventRegistrar } from './src/core/renderer';
 import { ViewerContainer } from './src/ui/viewer-container';
 import { ControlsManager } from './src/ui/controls';
 import { ErrorDisplay } from './src/ui/error-display';
@@ -330,8 +331,8 @@ export default class GLSLViewerPlugin extends Plugin {
 				}
 			}
 
-			const registerDomEvent = (element: HTMLElement, event: string, handler: EventListener) => {
-				child.registerDomEvent(element, event, handler);
+			const registerDomEvent: DomEventRegistrar = (element, event, handler, options) => {
+				child.registerDomEvent(element, event, handler, options);
 			};
 			const glslRenderer = new GLSLRenderer(canvas, this.app, registerDomEvent);
 			child.setRenderer(glslRenderer);
@@ -580,8 +581,8 @@ export default class GLSLViewerPlugin extends Plugin {
 		const container = viewerContainer.getContainer();
 
 		try {
-			const registerDomEvent = (element: HTMLElement, event: string, handler: EventListener) => {
-				child.registerDomEvent(element, event, handler);
+			const registerDomEvent: DomEventRegistrar = (element, event, handler, options) => {
+				child.registerDomEvent(element, event, handler, options);
 			};
 			const glslRenderer = new GLSLRenderer(canvas, this.app, registerDomEvent);
 			child.setRenderer(glslRenderer);

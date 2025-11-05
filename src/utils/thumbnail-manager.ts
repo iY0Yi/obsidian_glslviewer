@@ -106,13 +106,12 @@ export class ThumbnailManager {
 
 			const thumbnailPath = this.getThumbnailFilePath(shaderCode, config);
 			const arrayBuffer = await imageBlob.arrayBuffer();
-			const uint8Array = new Uint8Array(arrayBuffer);
 
 			// Use adapter for more reliable file operations
 			const adapter = this.app.vault.adapter;
 
 			// Write file directly using adapter
-			await adapter.writeBinary(thumbnailPath, uint8Array);
+			await adapter.writeBinary(thumbnailPath, arrayBuffer);
 
 			return thumbnailPath;
 		} catch {
