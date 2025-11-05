@@ -387,16 +387,16 @@ export default class GLSLViewerPlugin extends Plugin {
 					viewerContainer.showCanvas();
 
 					const modifiedConfig = { ...config, autoplay: true };
-					const viewerPromise = this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child).catch((error) => {
-						console.error('Failed to create GLSL viewer during lazy load', error);
-						child.setRenderer(null);
-						viewerContainer.showPlaceholder();
-						viewerContainer.hideCanvas();
-						viewerContainer.showPlayOverlay();
-						playOverlay.addEventListener('click', lazyLoadHandler);
-						child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
-					});
-					void viewerPromise;
+					void this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child)
+						.catch((error) => {
+							console.error('Failed to create GLSL viewer during lazy load', error);
+							child.setRenderer(null);
+							viewerContainer.showPlaceholder();
+							viewerContainer.hideCanvas();
+							viewerContainer.showPlayOverlay();
+							playOverlay.addEventListener('click', lazyLoadHandler);
+							child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
+						});
 				};
 
 				playOverlay.addEventListener('click', lazyLoadHandler);
@@ -682,7 +682,7 @@ export default class GLSLViewerPlugin extends Plugin {
 		// Add copy functionality
 			copyButton.addEventListener('click', (e) => {
 				e.preventDefault();
-				const copyPromise = navigator.clipboard.writeText(source)
+				void navigator.clipboard.writeText(source)
 					.then(() => {
 						copyButton.setAttribute('aria-label', 'Copied!');
 						setTimeout(() => {
@@ -695,7 +695,6 @@ export default class GLSLViewerPlugin extends Plugin {
 							copyButton.setAttribute('aria-label', 'Copy');
 						}, 1000);
 					});
-				void copyPromise;
 			});
 
 		// Add a class to distinguish from viewer blocks for CSS targeting
