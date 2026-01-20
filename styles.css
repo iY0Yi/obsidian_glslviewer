@@ -243,6 +243,7 @@
 .glsl-viewer-settings .setting-placeholder-icon svg {
   width: 24px !important;
   height: 24px !important;
+  margin-top: 6px !important;
 }
 
 /* Adjust setting item layout to accommodate placeholder - only for GLSL Viewer settings */
@@ -367,7 +368,7 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   background: rgba(0, 0, 0, 0.3) !important;
   color: white;
   border: none;
-  border-radius: 0px 0px 0 0;
+  border-radius: 5px;
   padding: 6px 8px;
   cursor: pointer;
   font-size: 16px;
