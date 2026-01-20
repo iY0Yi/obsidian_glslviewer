@@ -12,7 +12,6 @@ import { ShaderConfig } from './src/types/shader-config';
 import { wrapShaderCode } from './src/utils/shader-templates';
 import { GLSLViewerSettingTab } from './src/settings/settings-tab';
 import { GLSLRenderer } from './src/core/renderer';
-import type { DomEventRegistrar } from './src/core/renderer';
 import { ViewerContainer } from './src/ui/viewer-container';
 import { ControlsManager } from './src/ui/controls';
 import { ErrorDisplay } from './src/ui/error-display';
@@ -45,7 +44,15 @@ class GLSLViewerChild extends MarkdownRenderChild {
 	}
 
 	setRenderer(renderer: GLSLRenderer | null): void {
+		// Remove old renderer from child components if exists
+		if (this.renderer) {
+			this.removeChild(this.renderer);
+		}
 		this.renderer = renderer;
+		// Add new renderer as child for automatic lifecycle management
+		if (renderer) {
+			this.addChild(renderer);
+		}
 	}
 
 	registerLazyCleanup(cleanup?: () => void): void {
@@ -60,10 +67,8 @@ class GLSLViewerChild extends MarkdownRenderChild {
 			this.lazyCleanup();
 			this.lazyCleanup = null;
 		}
-		if (this.renderer) {
-			this.renderer.destroy();
-			this.renderer = null;
-		}
+		// Renderer is automatically unloaded as child component
+		this.renderer = null;
 		this.containerEl.remove();
 	}
 }
@@ -264,9 +269,9 @@ export default class GLSLViewerPlugin extends Plugin {
 		}
 	}
 
-		/**
-	 * Resolve texture path from shortcut key, texture folder, or return original path
-	 */
+	/**
+ * Resolve texture path from shortcut key, texture folder, or return original path
+ */
 	private resolveTexturePath(pathOrKey: string): string {
 		// 1. Check if it's a shortcut key first
 		const shortcut = this.settings.textureShortcuts.find(s => s.key === pathOrKey);
@@ -331,10 +336,7 @@ export default class GLSLViewerPlugin extends Plugin {
 				}
 			}
 
-			const registerDomEvent: DomEventRegistrar = (element, event, handler, options) => {
-				child.registerDomEvent(element, event, handler, options);
-			};
-			const glslRenderer = new GLSLRenderer(canvas, this.app, registerDomEvent);
+			const glslRenderer = new GLSLRenderer(canvas, this.app);
 			child.setRenderer(glslRenderer);
 
 			let processedShaderCode = shaderCode;
@@ -351,7 +353,7 @@ export default class GLSLViewerPlugin extends Plugin {
 
 			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
 
-			const loadResult = glslRenderer.load(fullShaderCode);
+			const loadResult = glslRenderer.loadShader(fullShaderCode);
 			if (!loadResult.success) {
 				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
 				child.setRenderer(null);
@@ -388,32 +390,32 @@ export default class GLSLViewerPlugin extends Plugin {
 	 */
 	private setupLazyRenderer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig, child: GLSLViewerChild) {
 		const playOverlay = viewerContainer.getPlayOverlay();
-			if (playOverlay) {
-				const lazyLoadHandler = () => {
-					playOverlay.removeEventListener('click', lazyLoadHandler);
-					child.registerLazyCleanup();
+		if (playOverlay) {
+			const lazyLoadHandler = () => {
+				playOverlay.removeEventListener('click', lazyLoadHandler);
+				child.registerLazyCleanup();
 
-					viewerContainer.hidePlayOverlay();
+				viewerContainer.hidePlayOverlay();
 
-					viewerContainer.hidePlaceholder();
-					viewerContainer.showCanvas();
+				viewerContainer.hidePlaceholder();
+				viewerContainer.showCanvas();
 
-					const modifiedConfig = { ...config, autoplay: true };
-					void this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child)
-						.catch((error) => {
-							console.error('Failed to create GLSL viewer during lazy load', error);
-							child.setRenderer(null);
-							viewerContainer.showPlaceholder();
-							viewerContainer.hideCanvas();
-							viewerContainer.showPlayOverlay();
-							playOverlay.addEventListener('click', lazyLoadHandler);
-							child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
-						});
-				};
+				const modifiedConfig = { ...config, autoplay: true };
+				void this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child)
+					.catch((error) => {
+						console.error('Failed to create GLSL viewer during lazy load', error);
+						child.setRenderer(null);
+						viewerContainer.showPlaceholder();
+						viewerContainer.hideCanvas();
+						viewerContainer.showPlayOverlay();
+						playOverlay.addEventListener('click', lazyLoadHandler);
+						child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
+					});
+			};
 
-				playOverlay.addEventListener('click', lazyLoadHandler);
-				child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
-			}
+			playOverlay.addEventListener('click', lazyLoadHandler);
+			child.registerLazyCleanup(() => playOverlay.removeEventListener('click', lazyLoadHandler));
+		}
 	}
 
 	/**
@@ -581,10 +583,7 @@ export default class GLSLViewerPlugin extends Plugin {
 		const container = viewerContainer.getContainer();
 
 		try {
-			const registerDomEvent: DomEventRegistrar = (element, event, handler, options) => {
-				child.registerDomEvent(element, event, handler, options);
-			};
-			const glslRenderer = new GLSLRenderer(canvas, this.app, registerDomEvent);
+			const glslRenderer = new GLSLRenderer(canvas, this.app);
 			child.setRenderer(glslRenderer);
 
 			let processedShaderCode = shaderCode;
@@ -601,7 +600,7 @@ export default class GLSLViewerPlugin extends Plugin {
 
 			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
 
-			const loadResult = glslRenderer.load(fullShaderCode);
+			const loadResult = glslRenderer.loadShader(fullShaderCode);
 			if (!loadResult.success) {
 				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
 				child.setRenderer(null);
@@ -622,11 +621,11 @@ export default class GLSLViewerPlugin extends Plugin {
 		}
 	}
 
-			/**
-	 * Create normal code block for GLSL code without @viewer directive
-	 * This function recreates the exact Obsidian reading mode code block structure
-	 * to maintain compatibility with CSS snippets and other plugins (like Shiki highlighter).
-	 */
+	/**
+* Create normal code block for GLSL code without @viewer directive
+* This function recreates the exact Obsidian reading mode code block structure
+* to maintain compatibility with CSS snippets and other plugins (like Shiki highlighter).
+*/
 	private createNormalCodeBlock(source: string, el: HTMLElement) {
 		// We must recreate the exact Obsidian reading mode code block structure
 		// because registerMarkdownCodeBlockProcessor gives us complete control
@@ -662,7 +661,7 @@ export default class GLSLViewerPlugin extends Plugin {
 						// Use GLSL language if available, fallback to C-like syntax for basic highlighting
 						const language = prism.languages.glsl || prism.languages.c || prism.languages.clike;
 						if (language) {
-														// Get highlighted code from Prism
+							// Get highlighted code from Prism
 							const highlightedCode = prism.highlight(source, language, 'glsl');
 
 							// Safely parse the highlighted HTML using DOMParser to avoid innerHTML security risks
@@ -686,31 +685,31 @@ export default class GLSLViewerPlugin extends Plugin {
 			}
 		}, 100); // Short delay to ensure Prism has been initialized by Obsidian
 
-			// Add the copy button (standard Obsidian feature)
-			const copyButton = el.createEl('button', {
-				cls: 'copy-code-button'
-			});
-			copyButton.setAttribute('aria-label', 'Copy');
-			copyButton.setText('');
+		// Add the copy button (standard Obsidian feature)
+		const copyButton = el.createEl('button', {
+			cls: 'copy-code-button'
+		});
+		copyButton.setAttribute('aria-label', 'Copy');
+		copyButton.setText('');
 		setGLSLIcon(copyButton, 'copy');
 
 		// Add copy functionality
-			copyButton.addEventListener('click', (e) => {
-				e.preventDefault();
-				void navigator.clipboard.writeText(source)
-					.then(() => {
-						copyButton.setAttribute('aria-label', 'Copied!');
-						setTimeout(() => {
-							copyButton.setAttribute('aria-label', 'Copy');
-						}, 1000);
-					})
-					.catch(() => {
-						copyButton.setAttribute('aria-label', 'Copy failed');
-						setTimeout(() => {
-							copyButton.setAttribute('aria-label', 'Copy');
-						}, 1000);
-					});
-			});
+		copyButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			void navigator.clipboard.writeText(source)
+				.then(() => {
+					copyButton.setAttribute('aria-label', 'Copied!');
+					setTimeout(() => {
+						copyButton.setAttribute('aria-label', 'Copy');
+					}, 1000);
+				})
+				.catch(() => {
+					copyButton.setAttribute('aria-label', 'Copy failed');
+					setTimeout(() => {
+						copyButton.setAttribute('aria-label', 'Copy');
+					}, 1000);
+				});
+		});
 
 		// Add a class to distinguish from viewer blocks for CSS targeting
 		preElement.addClass('glsl-standard-block');
@@ -742,9 +741,9 @@ export default class GLSLViewerPlugin extends Plugin {
 				}
 			}
 
-			// Immediately destroy the renderer to free WebGL context
+			// Immediately unload the renderer to free WebGL context
 			// since this is only for thumbnail generation
-			glslRenderer.destroy();
+			glslRenderer.unload();
 			child.setRenderer(null);
 
 			// Set up lazy loading for when user wants to actually view the shader
@@ -752,7 +751,7 @@ export default class GLSLViewerPlugin extends Plugin {
 
 		} catch {
 			// Clean up renderer even if thumbnail generation failed
-			glslRenderer.destroy();
+			glslRenderer.unload();
 			child.setRenderer(null);
 			// Setup lazy loading as fallback
 			this.setupLazyRenderer(viewerContainer, shaderCode, config, child);

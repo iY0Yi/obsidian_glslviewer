@@ -1,13 +1,6 @@
-import { App } from 'obsidian';
+import { App, Component } from 'obsidian';
 import { TextureManager } from './texture-manager';
 import { ShaderCompiler } from './shader-compiler';
-
-export type DomEventRegistrar = <K extends keyof HTMLElementEventMap>(
-	element: HTMLElement,
-	event: K,
-	handler: (this: HTMLElement, ev: HTMLElementEventMap[K]) => void,
-	options?: boolean | AddEventListenerOptions,
-) => void;
 
 const isWebGL2Context = (context: unknown): context is WebGL2RenderingContext =>
 	typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext;
@@ -28,12 +21,12 @@ type ShaderUniformName =
 	| 'iChannel3'
 	| 'iChannelResolution';
 
-export class GLSLRenderer {
-        private canvas: HTMLCanvasElement | null;
-        private gl: WebGLRenderingContext | null;
-        private program: WebGLProgram | null = null;
-        private animationId: number | null = null;
-        // フレームベースの時間管理
+export class GLSLRenderer extends Component {
+	private canvas: HTMLCanvasElement | null;
+	private gl: WebGLRenderingContext | null;
+	private program: WebGLProgram | null = null;
+	private animationId: number | null = null;
+	// フレームベースの時間管理
 	private currentTime: number = 0.0;
 	private readonly targetFPS: number = 60;
 	private readonly frameDelta: number = 1.0 / 60; // 1/60秒
@@ -43,7 +36,7 @@ export class GLSLRenderer {
 	private shaderCompiler: ShaderCompiler | null;
 	private app: App | null;
 	public isWebGL2: boolean;
-	private isDestroyed: boolean = false; // Track if destroy has been called
+	private isDestroyed: boolean = false; // Track if onunload has been called
 
 	// Mouse tracking (Shadertoy compatible)
 	private mousePosX: number = 0;
@@ -52,18 +45,14 @@ export class GLSLRenderer {
 	private mouseOriY: number = 0;
 	private mouseIsDown: boolean = false;
 
-	// Store event listeners and observers for cleanup
-        private eventListeners: Array<{element: HTMLElement, event: keyof HTMLElementEventMap, handler: EventListener}> = [];
-        private domEventRegistrar?: DomEventRegistrar;
+	constructor(canvas: HTMLCanvasElement, app: App) {
+		super();
+		this.canvas = canvas;
+		this.app = app;
 
-        constructor(canvas: HTMLCanvasElement, app: App, domEventRegistrar?: DomEventRegistrar) {
-                this.canvas = canvas;
-                this.app = app;
-                this.domEventRegistrar = domEventRegistrar;
-
-                // Try WebGL2 first, fallback to WebGL1
-                const requestedWebGL2 = canvas.getContext('webgl2');
-                if (isWebGL2Context(requestedWebGL2)) {
+		// Try WebGL2 first, fallback to WebGL1
+		const requestedWebGL2 = canvas.getContext('webgl2');
+		if (isWebGL2Context(requestedWebGL2)) {
 			this.gl = requestedWebGL2;
 			this.isWebGL2 = true;
 		} else {
@@ -88,18 +77,7 @@ export class GLSLRenderer {
 		this.setupMouseTracking();
 	}
 
-	/**
-	 * Add event listener and track it for cleanup
-	 */
-        private addTrackedEventListener<K extends keyof HTMLElementEventMap>(element: HTMLElement, event: K, handler: (ev: HTMLElementEventMap[K]) => void) {
-                const wrappedHandler = handler as unknown as EventListener;
-                if (this.domEventRegistrar) {
-                        this.domEventRegistrar(element, event, handler as (this: HTMLElement, ev: HTMLElementEventMap[K]) => void);
-                } else {
-                        element.addEventListener(event, wrappedHandler);
-                }
-                this.eventListeners.push({element, event, handler: wrappedHandler});
-        }
+
 
 	private setupMouseTracking() {
 		if (!this.canvas) return;
@@ -120,11 +98,11 @@ export class GLSLRenderer {
 			if (!this.canvas) return false;
 			const rect = this.canvas.getBoundingClientRect();
 			return ev.clientX >= rect.left && ev.clientX <= rect.right &&
-			       ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+				ev.clientY >= rect.top && ev.clientY <= rect.bottom;
 		};
 
-		// Use tracked event listeners for proper cleanup
-		this.addTrackedEventListener(this.canvas, 'mousedown', (mouseEvent) => {
+		// Use Component's registerDomEvent for automatic cleanup when unloaded
+		this.registerDomEvent(this.canvas, 'mousedown', (mouseEvent) => {
 			if (mouseEvent.button === 2 || !onCanvas(mouseEvent)) return; // Skip right click or outside canvas
 
 			this.mouseIsDown = true;
@@ -134,7 +112,7 @@ export class GLSLRenderer {
 			this.mousePosY = this.mouseOriY;
 		});
 
-		this.addTrackedEventListener(this.canvas, 'mouseup', (mouseEvent) => {
+		this.registerDomEvent(this.canvas, 'mouseup', (mouseEvent) => {
 			if (!onCanvas(mouseEvent)) return;
 
 			this.mouseIsDown = false;
@@ -143,7 +121,7 @@ export class GLSLRenderer {
 			this.mouseOriY = Math.abs(this.mouseOriY) * -1;
 		});
 
-		this.addTrackedEventListener(this.canvas, 'mousemove', (mouseEvent) => {
+		this.registerDomEvent(this.canvas, 'mousemove', (mouseEvent) => {
 			if (!onCanvas(mouseEvent)) return;
 
 			if (this.mouseIsDown) {
@@ -156,7 +134,7 @@ export class GLSLRenderer {
 			}
 		});
 
-		this.addTrackedEventListener(this.canvas, 'mouseleave', () => {
+		this.registerDomEvent(this.canvas, 'mouseleave', () => {
 			if (this.mouseIsDown) {
 				this.mouseIsDown = false;
 				this.mouseOriX = Math.abs(this.mouseOriX) * -1;
@@ -165,7 +143,7 @@ export class GLSLRenderer {
 		});
 	}
 
-	load(fragmentShader: string): { success: boolean; error?: string } {
+	loadShader(fragmentShader: string): { success: boolean; error?: string } {
 		if (!this.shaderCompiler) {
 			return { success: false, error: 'Renderer not initialized' };
 		}
@@ -231,9 +209,9 @@ export class GLSLRenderer {
 		// Create a full-screen quad
 		const positions = new Float32Array([
 			-1, -1,
-			 1, -1,
-			-1,  1,
-			 1,  1,
+			1, -1,
+			-1, 1,
+			1, 1,
 		]);
 
 		const buffer = gl.createBuffer();
@@ -386,12 +364,12 @@ export class GLSLRenderer {
 		}
 	}
 
-		/**
-	 * Capture frame at a specific time without waiting
-	 * @param timeSeconds Time value for iTime uniform (default: 1.0 second)
-	 * @param quality JPEG quality (0.0 to 1.0)
-	 * @returns Promise that resolves to JPEG blob
-	 */
+	/**
+ * Capture frame at a specific time without waiting
+ * @param timeSeconds Time value for iTime uniform (default: 1.0 second)
+ * @param quality JPEG quality (0.0 to 1.0)
+ * @returns Promise that resolves to JPEG blob
+ */
 	async captureAtTime(timeSeconds: number = 1.0, quality: number = 0.8): Promise<Blob | null> {
 		if (!this.program || !this.canvas) {
 			return null;
@@ -489,18 +467,14 @@ export class GLSLRenderer {
 		return this.canvas;
 	}
 
-	destroy() {
+	onunload() {
 		if (this.isDestroyed) return; // Prevent multiple calls
 		this.isDestroyed = true;
 
 		// Stop animation first
 		this.pause();
 
-		// Remove all tracked event listeners
-		this.eventListeners.forEach(({element, event, handler}) => {
-			element.removeEventListener(event, handler);
-		});
-		this.eventListeners = [];
+		// Event listeners are automatically cleaned up by Component.unload()
 
 		// Clean up WebGL resources
 		if (this.textureManager) {

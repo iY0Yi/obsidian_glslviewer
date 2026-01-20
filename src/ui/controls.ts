@@ -137,7 +137,7 @@ export class ControlsManager {
 
 		// Destroy the renderer to free WebGL context
 		if (this.glslRenderer) {
-			this.glslRenderer.destroy();
+			this.glslRenderer.unload();
 			this.glslRenderer = null; // レンダラーへの参照をクリア
 			this.onRendererUpdate?.(null);
 		}
