@@ -200,7 +200,7 @@
 }
 
 /* Reduce margin for description elements under h4 in GLSL Viewer settings */
-.glsl-viewer-settings .vertical-tab-content h4 + .setting-item-description {
+.glsl-viewer-settings .vertical-tab-content h4+.setting-item-description {
   margin-top: 4px;
   margin-bottom: 12px;
 }
@@ -274,7 +274,7 @@
 }
 
 /* GLSLビューワーの後にあるコードブロックのマージンを調整 */
-.glsl-viewer-container + pre {
+.glsl-viewer-container+pre {
   margin-top: 0 !important;
 }
 
@@ -284,12 +284,12 @@ pre:has(+ .glsl-viewer-container) {
 }
 
 /* 見出しの直後にビューワーがある場合は少しマージンを減らす */
-h1 + .glsl-viewer-container,
-h2 + .glsl-viewer-container,
-h3 + .glsl-viewer-container,
-h4 + .glsl-viewer-container,
-h5 + .glsl-viewer-container,
-h6 + .glsl-viewer-container {
+h1+.glsl-viewer-container,
+h2+.glsl-viewer-container,
+h3+.glsl-viewer-container,
+h4+.glsl-viewer-container,
+h5+.glsl-viewer-container,
+h6+.glsl-viewer-container {
   margin-top: 0.5em;
 }
 
@@ -306,7 +306,7 @@ pre.glsl-code-with-viewer {
 }
 
 /* ビューワーコンテナーと隣接する場合のマージン */
-.glsl-viewer-container + pre.glsl-code-with-viewer {
+.glsl-viewer-container+pre.glsl-code-with-viewer {
   margin-top: 0 !important;
 }
 
@@ -317,7 +317,8 @@ pre.glsl-code-with-viewer[style*="display: none"] {
 }
 
 .glsl-viewer-canvas {
-  display: block; /* デフォルトは表示 */
+  display: block;
+  /* デフォルトは表示 */
   width: 100%;
   height: 100%;
   position: relative;
@@ -334,10 +335,12 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   width: 100%;
   background-color: #000;
   border-radius: 0px 0px 0 0;
-  display: none; /* デフォルトは非表示 */
+  display: none;
+  /* デフォルトは非表示 */
   /* CSS変数でアスペクト比を制御 */
   aspect-ratio: calc(1 / var(--aspect-ratio));
-  overflow: hidden; /* Ensure thumbnail image fits within bounds */
+  overflow: hidden;
+  /* Ensure thumbnail image fits within bounds */
 }
 
 /* Thumbnail image styling */
@@ -353,12 +356,11 @@ pre.glsl-code-with-viewer[style*="display: none"] {
 }
 
 .glsl-viewer-controls {
-  background: rgba(0, 0, 0, 0.1) !important;
   position: absolute;
   bottom: 8px;
   left: 8px;
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .glsl-viewer-button {
@@ -370,7 +372,8 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   cursor: pointer;
   font-size: 16px;
   transition: background-color 0.2s;
-  display: none; /* デフォルトは非表示 */
+  display: none;
+  /* デフォルトは非表示 */
   align-items: center;
   justify-content: center;
 }
@@ -402,7 +405,6 @@ pre.glsl-code-with-viewer[style*="display: none"] {
 
 .glsl-viewer-button:hover {
   background: rgba(0, 0, 0, 0.5) !important;
-  box-shadow: 0 0 0px 0 rgba(0, 0, 0, 0.5) !important;
 }
 
 .glsl-viewer-reading-wrapper {
@@ -425,7 +427,8 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   border: none !important;
   border-radius: 0px 0px 0 0;
   box-shadow: none !important;
-  display: flex; /* デフォルトは表示 */
+  display: flex;
+  /* デフォルトは表示 */
   align-items: center;
   justify-content: center;
   font-size: 28px;
@@ -454,7 +457,8 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   left: 0;
   width: 100%;
   height: 100%;
-  background: #b91c1c; /* 赤い背景で全体を覆う */
+  background: #b91c1c;
+  /* 赤い背景で全体を覆う */
   color: white;
   display: flex;
   flex-direction: column;
@@ -472,7 +476,6 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   font-weight: bold;
   margin-bottom: 12px;
   font-size: 16px;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
   text-align: left;
 }
 
@@ -484,7 +487,6 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   max-height: 60%;
   overflow-y: auto;
   line-height: 1.4;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .glsl-viewer-hidden {
@@ -510,8 +512,8 @@ pre.glsl-code-with-viewer[style*="display: none"] {
 /* DOM構造に基づいた正しいセレクター */
 .glsl-clean-code-container .expressive-code,
 .glsl-edit-mode-code .expressive-code,
-.glsl-code-with-viewer ~ .glsl-clean-code-container .expressive-code,
-.glsl-viewer-container ~ .glsl-clean-code-container .expressive-code,
+.glsl-code-with-viewer~.glsl-clean-code-container .expressive-code,
+.glsl-viewer-container~.glsl-clean-code-container .expressive-code,
 div:has(.glsl-viewer-container) .expressive-code,
 .block-language-glsl[data-glsl-processed] .expressive-code {
   margin-top: 0 !important;
@@ -555,4 +557,3 @@ div:has(.glsl-viewer-container) .expressive-code,
 .glsl-viewer-image-hidden {
   display: none;
 }
-
