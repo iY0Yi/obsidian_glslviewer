@@ -72,11 +72,15 @@ export class GLSLRenderer extends Component {
 		// Initialize managers
 		this.textureManager = new TextureManager(gl, this.app);
 		this.shaderCompiler = new ShaderCompiler(gl, this.isWebGL2);
-
-		// Set up mouse tracking
-		this.setupMouseTracking();
 	}
 
+	/**
+	 * Called when the component is loaded via addChild() + load().
+	 * Set up mouse tracking here since registerDomEvent only works after load.
+	 */
+	onload() {
+		this.setupMouseTracking();
+	}
 
 
 	private setupMouseTracking() {

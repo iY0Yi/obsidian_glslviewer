@@ -44,6 +44,10 @@ class GLSLViewerChild extends MarkdownRenderChild {
 	}
 
 	setRenderer(renderer: GLSLRenderer | null): void {
+		// Skip if same renderer is being set again
+		if (this.renderer === renderer) {
+			return;
+		}
 		// Remove old renderer from child components if exists
 		if (this.renderer) {
 			this.removeChild(this.renderer);
@@ -52,6 +56,8 @@ class GLSLViewerChild extends MarkdownRenderChild {
 		// Add new renderer as child for automatic lifecycle management
 		if (renderer) {
 			this.addChild(renderer);
+			// Explicitly load the component to ensure registerDomEvent works
+			renderer.load();
 		}
 	}
 
