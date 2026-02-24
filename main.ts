@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, Platform, setIcon } from 'obsidian';
 interface PrismLanguageGrammar {
 	[key: string]: unknown;
 }
@@ -17,7 +17,7 @@ import { ControlsManager } from './src/ui/controls';
 import { ErrorDisplay } from './src/ui/error-display';
 import { ThumbnailManager } from './src/utils/thumbnail-manager';
 import { TemplateManager } from './src/utils/template-manager';
-import { registerGLSLViewerIcons, setGLSLIcon } from './src/utils/icons';
+import { registerGLSLViewerIcons } from './src/utils/icons';
 
 class GLSLViewerChild extends MarkdownRenderChild {
 	private renderer: GLSLRenderer | null = null;
@@ -115,7 +115,7 @@ export default class GLSLViewerPlugin extends Plugin {
 			} else {
 				// For GLSL blocks without @viewer directive, preserve the original structure
 				// to maintain compatibility with CSS snippets and other plugins
-				this.createNormalCodeBlock(source, el);
+				this.createNormalCodeBlock(source, el, ctx);
 			}
 		});
 	}
@@ -542,8 +542,58 @@ export default class GLSLViewerPlugin extends Plugin {
 			}
 
 			codeBlockContainer.appendChild(preElement);
+
+			// Add copy button to reading mode code block
+			this.addCopyButton(codeBlockContainer, shaderCode);
+
 			wrapper.appendChild(codeBlockContainer);
 		}
+	}
+
+	/**
+	 * Navigate to the code block in the editor (switch to source editing)
+	 */
+	private navigateToCodeBlock(el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+		const sectionInfo = ctx.getSectionInfo(el);
+		if (sectionInfo) {
+			const editor = this.app.workspace.activeEditor?.editor;
+			if (editor) {
+				editor.setCursor(sectionInfo.lineStart + 1, 0);
+				editor.focus();
+			}
+		}
+	}
+
+	/**
+	 * Add a copy button to a code block container
+	 */
+	private addCopyButton(parent: HTMLElement, textToCopy: string) {
+		const copyButton = document.createElement('button');
+		copyButton.className = 'copy-code-button';
+		copyButton.setAttribute('aria-label', 'Copy');
+		setIcon(copyButton, 'copy');
+
+		copyButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			void navigator.clipboard.writeText(textToCopy)
+				.then(() => {
+					copyButton.setAttribute('aria-label', 'Copied!');
+					copyButton.classList.add('is-copied');
+					setTimeout(() => {
+						copyButton.setAttribute('aria-label', 'Copy');
+						copyButton.classList.remove('is-copied');
+					}, 1000);
+				})
+				.catch(() => {
+					copyButton.setAttribute('aria-label', 'Copy failed');
+					setTimeout(() => {
+						copyButton.setAttribute('aria-label', 'Copy');
+					}, 1000);
+				});
+		});
+
+		parent.appendChild(copyButton);
 	}
 
 	/**
@@ -572,6 +622,32 @@ export default class GLSLViewerPlugin extends Plugin {
 		preElement.appendChild(codeElement);
 		preElement.classList.add('glsl-code-with-viewer');
 		codeBlockContainer.appendChild(preElement);
+
+		// Click on code area to enter source editing (like native code blocks)
+		codeBlockContainer.classList.add('glsl-code-clickable');
+		codeBlockContainer.addEventListener('click', (e) => {
+			// Don't navigate if clicking on copy button
+			if ((e.target as HTMLElement).closest('.copy-code-button')) return;
+			if ((e.target as HTMLElement).closest('.glsl-edit-code-button')) return;
+			this.navigateToCodeBlock(el, ctx);
+		});
+
+		// Add copy button to code block
+		this.addCopyButton(codeBlockContainer, cleanCode);
+
+		// Mobile-only: Add "Edit Code" button
+		if (Platform.isMobile) {
+			const editButton = document.createElement('button');
+			editButton.className = 'glsl-edit-code-button';
+			editButton.setAttribute('aria-label', 'Edit code');
+			setIcon(editButton, 'pencil');
+			editButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.navigateToCodeBlock(el, ctx);
+			});
+			codeBlockContainer.appendChild(editButton);
+		}
 
 		el.appendChild(codeBlockContainer);
 
@@ -640,7 +716,7 @@ export default class GLSLViewerPlugin extends Plugin {
 * This function recreates the exact Obsidian reading mode code block structure
 * to maintain compatibility with CSS snippets and other plugins (like Shiki highlighter).
 */
-	private createNormalCodeBlock(source: string, el: HTMLElement) {
+	private createNormalCodeBlock(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
 		// We must recreate the exact Obsidian reading mode code block structure
 		// because registerMarkdownCodeBlockProcessor gives us complete control
 
@@ -699,31 +775,17 @@ export default class GLSLViewerPlugin extends Plugin {
 			}
 		}, 100); // Short delay to ensure Prism has been initialized by Obsidian
 
-		// Add the copy button (standard Obsidian feature)
-		const copyButton = el.createEl('button', {
-			cls: 'copy-code-button'
-		});
-		copyButton.setAttribute('aria-label', 'Copy');
-		copyButton.setText('');
-		setGLSLIcon(copyButton, 'copy');
+		// Add copy button using shared helper
+		this.addCopyButton(el, source);
 
-		// Add copy functionality
-		copyButton.addEventListener('click', (e) => {
-			e.preventDefault();
-			void navigator.clipboard.writeText(source)
-				.then(() => {
-					copyButton.setAttribute('aria-label', 'Copied!');
-					setTimeout(() => {
-						copyButton.setAttribute('aria-label', 'Copy');
-					}, 1000);
-				})
-				.catch(() => {
-					copyButton.setAttribute('aria-label', 'Copy failed');
-					setTimeout(() => {
-						copyButton.setAttribute('aria-label', 'Copy');
-					}, 1000);
-				});
-		});
+		// In edit mode: click on code block to enter source editing (like native code blocks)
+		if (this.isInEditMode(el)) {
+			el.classList.add('glsl-code-clickable');
+			el.addEventListener('click', (e) => {
+				if ((e.target as HTMLElement).closest('.copy-code-button')) return;
+				this.navigateToCodeBlock(el, ctx);
+			});
+		}
 
 		// Add a class to distinguish from viewer blocks for CSS targeting
 		preElement.addClass('glsl-standard-block');

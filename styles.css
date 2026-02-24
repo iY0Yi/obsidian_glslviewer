@@ -498,10 +498,64 @@ pre.glsl-code-with-viewer[style*="display: none"] {
 .glsl-edit-mode-code {
   margin-top: 0em;
   margin-bottom: 0em;
+  position: relative;
 }
 
 .glsl-edit-mode-code pre {
   margin: 0;
+}
+
+/* リーディングモード用コードブロック - コピーボタン配置用 */
+.glsl-reading-mode-code {
+  position: relative;
+}
+
+/* コードブロックのコピーボタン: ホバー時のみ表示 (Obsidianネイティブ動作に合わせる) */
+.glsl-clean-code-container>.copy-code-button,
+.el-pre>.copy-code-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.glsl-clean-code-container:hover>.copy-code-button,
+.el-pre:hover>.copy-code-button {
+  opacity: 1;
+}
+
+/* クリックで編集に入るカーソル表示 */
+.glsl-code-clickable {
+  cursor: text;
+}
+
+/* モバイル用「Edit Code」ボタン */
+.glsl-edit-code-button {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.glsl-edit-code-button:hover,
+.glsl-edit-code-button:active {
+  background: var(--background-modifier-active-hover);
+  color: var(--text-normal);
+}
+
+.glsl-edit-code-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* エディットモード用のビューワーコンテナー - 上部マージンを0に */
@@ -556,5 +610,9 @@ div:has(.glsl-viewer-container) .expressive-code,
 
 /* Image thumbnail utility class */
 .glsl-viewer-image-hidden {
+  display: none;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview.is-readable-line-width .cm-embed-block>.edit-block-button {
   display: none;
 }
