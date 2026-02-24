@@ -530,33 +530,7 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   cursor: text;
 }
 
-/* モバイル用「Edit Code」ボタン */
-.glsl-edit-code-button {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: var(--background-modifier-hover);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  padding: 4px 6px;
-  cursor: pointer;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
 
-.glsl-edit-code-button:hover,
-.glsl-edit-code-button:active {
-  background: var(--background-modifier-active-hover);
-  color: var(--text-normal);
-}
-
-.glsl-edit-code-button svg {
-  width: 16px;
-  height: 16px;
-}
 
 /* エディットモード用のビューワーコンテナー - 上部マージンを0に */
 .glsl-viewer-edit-mode {

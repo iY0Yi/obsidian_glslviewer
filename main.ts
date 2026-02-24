@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, Platform, setIcon } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, setIcon } from 'obsidian';
 interface PrismLanguageGrammar {
 	[key: string]: unknown;
 }
@@ -635,19 +635,6 @@ export default class GLSLViewerPlugin extends Plugin {
 		// Add copy button to code block
 		this.addCopyButton(codeBlockContainer, cleanCode);
 
-		// Mobile-only: Add "Edit Code" button
-		if (Platform.isMobile) {
-			const editButton = document.createElement('button');
-			editButton.className = 'glsl-edit-code-button';
-			editButton.setAttribute('aria-label', 'Edit code');
-			setIcon(editButton, 'pencil');
-			editButton.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				this.navigateToCodeBlock(el, ctx);
-			});
-			codeBlockContainer.appendChild(editButton);
-		}
 
 		el.appendChild(codeBlockContainer);
 
