@@ -1,7 +1,7 @@
 {
 	"id": "glsl-viewer",
 	"name": "GLSL Viewer",
-	"version": "0.1.5",
+	"version": "0.1.7",
 	"minAppVersion": "0.15.0",
 	"description": "Preview GLSL shaders.",
 	"author": "iY0Yi",

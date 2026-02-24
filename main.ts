@@ -344,6 +344,10 @@ export default class GLSLViewerPlugin extends Plugin {
 
 			const glslRenderer = new GLSLRenderer(canvas, this.app);
 			child.setRenderer(glslRenderer);
+			glslRenderer.onContextLost(() => {
+				ErrorDisplay.createAndShow(container, 'WebGL context lost (GPU timeout). Try simplifying the shader.');
+				child.setRenderer(null);
+			});
 
 			let processedShaderCode = shaderCode;
 			if (config.template) {
@@ -591,6 +595,10 @@ export default class GLSLViewerPlugin extends Plugin {
 		try {
 			const glslRenderer = new GLSLRenderer(canvas, this.app);
 			child.setRenderer(glslRenderer);
+			glslRenderer.onContextLost(() => {
+				ErrorDisplay.createAndShow(container, 'WebGL context lost (GPU timeout). Try simplifying the shader.');
+				child.setRenderer(null);
+			});
 
 			let processedShaderCode = shaderCode;
 			if (config.template) {

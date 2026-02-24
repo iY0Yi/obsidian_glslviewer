@@ -37,6 +37,8 @@ export class GLSLRenderer extends Component {
 	private app: App | null;
 	public isWebGL2: boolean;
 	private isDestroyed: boolean = false; // Track if onunload has been called
+	private contextLost: boolean = false;
+	private onContextLostCallback: (() => void) | null = null;
 
 	// Mouse tracking (Shadertoy compatible)
 	private mousePosX: number = 0;
@@ -68,6 +70,21 @@ export class GLSLRenderer extends Component {
 		if (!gl) {
 			throw new Error('WebGL context initialization failed');
 		}
+
+		// Handle WebGL context loss (prevents app crash on mobile GPU timeout)
+		canvas.addEventListener('webglcontextlost', (e) => {
+			e.preventDefault(); // Prevent default to allow possible restore
+			this.contextLost = true;
+			this.pause();
+			if (this.onContextLostCallback) {
+				this.onContextLostCallback();
+			}
+		});
+		canvas.addEventListener('webglcontextrestored', () => {
+			// Context is restored but all resources are invalidated.
+			// Mark as lost so the viewer shows an error rather than rendering garbage.
+			this.contextLost = true;
+		});
 
 		// Initialize managers
 		this.textureManager = new TextureManager(gl, this.app);
@@ -148,8 +165,17 @@ export class GLSLRenderer extends Component {
 	}
 
 	loadShader(fragmentShader: string): { success: boolean; error?: string } {
-		if (!this.shaderCompiler) {
+		if (!this.shaderCompiler || !this.gl) {
 			return { success: false, error: 'Renderer not initialized' };
+		}
+
+		// Check if the WebGL context is already lost before attempting compilation.
+		// This is distinct from the runtime 'webglcontextlost' event handler —
+		// it catches cases where the context was destroyed beforehand
+		// (e.g., a previous shader's GPU timeout on another viewer in the same page).
+		if (this.gl.isContextLost()) {
+			this.contextLost = true;
+			return { success: false, error: 'WebGL context is already lost. Another shader may have caused a GPU crash.' };
 		}
 
 		try {
@@ -251,12 +277,16 @@ export class GLSLRenderer extends Component {
 	}
 
 	private animate = () => {
+		if (this.contextLost) {
+			this.pause();
+			return;
+		}
 		this.render();
 		this.animationId = requestAnimationFrame(this.animate);
 	}
 
 	private render() {
-		if (!this.program || !this.gl) return;
+		if (!this.program || !this.gl || this.contextLost) return;
 
 		const gl = this.gl;
 		gl.useProgram(this.program);
@@ -459,6 +489,20 @@ export class GLSLRenderer extends Component {
 		gl.clearColor(0, 0, 0, 1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+	}
+
+	/**
+	 * Register a callback for when WebGL context is lost (e.g., GPU timeout on mobile)
+	 */
+	onContextLost(callback: () => void): void {
+		this.onContextLostCallback = callback;
+	}
+
+	/**
+	 * Check if the WebGL context has been lost
+	 */
+	getContextLost(): boolean {
+		return this.contextLost;
 	}
 
 	/**
