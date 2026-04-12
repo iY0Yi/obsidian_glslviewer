@@ -1,6 +1,8 @@
 # GLSL Viewer
 
 Preview GLSL shaders on Obsidian.
+
+This is the AI-Assisted modified version of the original
 </br></br></br>
 ## Features
 
