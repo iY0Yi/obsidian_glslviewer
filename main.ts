@@ -8,7 +8,7 @@ interface ObsidianPrism {
 	languages: Record<string, PrismLanguageGrammar>;
 }
 import { GLSLViewerSettings, DEFAULT_SETTINGS } from './src/types/settings';
-import { CustomUniform, ShaderConfig } from './src/types/shader-config';
+import { CustomUniform, ShaderConfig, ShaderPrecision } from './src/types/shader-config';
 import { wrapShaderCode } from './src/utils/shader-templates';
 import { GLSLViewerSettingTab } from './src/settings/settings-tab';
 import { GLSLRenderer } from './src/core/renderer';
@@ -329,6 +329,7 @@ export default class GLSLViewerPlugin extends Plugin {
 			aspect: this.settings.defaultAspect,
 			autoplay: this.settings.defaultAutoplay,
 			hideCode: this.settings.defaultHideCode,
+			precision: this.settings.defaultPrecision,
 			templates: [],
 			customUniforms: [],
 		};
@@ -377,6 +378,11 @@ export default class GLSLViewerPlugin extends Plugin {
 			config.autoplay = directive.substring(10).trim() === 'true';
 		} else if (directive.startsWith('@hideCode:')) {
 			config.hideCode = directive.substring(10).trim() === 'true';
+		} else if (directive.startsWith('@precision:')) {
+			const precisionValue = directive.substring(11).trim().toLowerCase();
+			if (precisionValue === 'highp' || precisionValue === 'mediump') {
+				config.precision = precisionValue as ShaderPrecision;
+			}
 		} else if (directive.startsWith('@template:')) {
 			const templateDirective = directive.substring(10).trim();
 			if (!templateDirective) {
@@ -602,9 +608,9 @@ export default class GLSLViewerPlugin extends Plugin {
 			}
 
 			glslRenderer.setCustomUniformDefinitions(config.customUniforms);
-			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
+			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2, config.precision);
 
-			const loadResult = glslRenderer.loadShader(fullShaderCode);
+			const loadResult = glslRenderer.loadShader(fullShaderCode, config.precision);
 			if (!loadResult.success) {
 				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
 				child.setRenderer(null);
@@ -920,9 +926,9 @@ export default class GLSLViewerPlugin extends Plugin {
 			}
 
 			glslRenderer.setCustomUniformDefinitions(config.customUniforms);
-			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
+			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2, config.precision);
 
-			const loadResult = glslRenderer.loadShader(fullShaderCode);
+			const loadResult = glslRenderer.loadShader(fullShaderCode, config.precision);
 			if (!loadResult.success) {
 				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
 				child.setRenderer(null);

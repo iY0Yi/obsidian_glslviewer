@@ -29,11 +29,13 @@ export type ColorUniform = {
 };
 
 export type CustomUniform = SliderUniform | ToggleUniform | ColorUniform;
+export type ShaderPrecision = 'highp' | 'mediump';
 
 export interface ShaderConfig {
 	aspect: number;
 	autoplay: boolean;
 	hideCode: boolean;
+	precision: ShaderPrecision;
 	template?: string;
 	templates?: string[];
 	customUniforms?: CustomUniform[];

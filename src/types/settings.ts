@@ -7,6 +7,7 @@ export interface GLSLViewerSettings {
 	defaultAspect: number;
 	defaultAutoplay: boolean;
 	defaultHideCode: boolean;
+	defaultPrecision: 'highp' | 'mediump';
 	textureFolder: string;
 	textureShortcuts: TextureShortcut[];
 	templatesFolder: string;
@@ -17,6 +18,7 @@ export const DEFAULT_SETTINGS: GLSLViewerSettings = {
 	defaultAspect: 0.5625, // 16:9 aspect ratio (9/16)
 	defaultAutoplay: false,
 	defaultHideCode: false,
+	defaultPrecision: 'highp',
 	textureFolder: '',
 	textureShortcuts: [],
 	templatesFolder: 'GLSL Templates',

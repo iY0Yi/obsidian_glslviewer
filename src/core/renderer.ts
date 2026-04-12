@@ -1,7 +1,7 @@
 import { App, Component } from 'obsidian';
 import { TextureManager } from './texture-manager';
 import { ShaderCompiler } from './shader-compiler';
-import { CustomUniform } from '../types/shader-config';
+import { CustomUniform, ShaderPrecision } from '../types/shader-config';
 
 const isWebGL2Context = (context: unknown): context is WebGL2RenderingContext =>
 	typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext;
@@ -167,7 +167,7 @@ export class GLSLRenderer extends Component {
 		});
 	}
 
-	loadShader(fragmentShader: string): { success: boolean; error?: string } {
+	loadShader(fragmentShader: string, precision: ShaderPrecision = 'highp'): { success: boolean; error?: string } {
 		if (!this.shaderCompiler || !this.gl) {
 			return { success: false, error: 'Renderer not initialized' };
 		}
@@ -182,7 +182,7 @@ export class GLSLRenderer extends Component {
 		}
 
 		try {
-			const result = this.shaderCompiler.compileProgram(fragmentShader);
+			const result = this.shaderCompiler.compileProgram(fragmentShader, precision);
 			if (!result.success) {
 				return result;
 			}
