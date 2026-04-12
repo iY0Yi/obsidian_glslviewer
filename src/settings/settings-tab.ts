@@ -232,6 +232,20 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 				})
 			);
 
+		// Default Precision setting
+		new Setting(containerEl)
+			.setName('Default precision')
+			.setDesc('Default float precision for new shader viewers (override with the @precision directive).')
+			.addDropdown(dropdown => dropdown
+				.addOption('highp', 'High precision (highp)')
+				.addOption('mediump', 'Medium precision (mediump)')
+				.setValue(this.plugin.settings.defaultPrecision)
+				.onChange((value) => {
+					this.plugin.settings.defaultPrecision = value === 'mediump' ? 'mediump' : 'highp';
+					void this.plugin.saveSettings();
+				})
+			);
+
                 // Folders Settings Section
                 new Setting(containerEl)
                         .setName('Folders')
@@ -535,5 +549,3 @@ export class GLSLViewerSettingTab extends PluginSettingTab {
 		});
 	}
 }
-
-
