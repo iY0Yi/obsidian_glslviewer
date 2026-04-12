@@ -329,6 +329,7 @@ export default class GLSLViewerPlugin extends Plugin {
 			aspect: this.settings.defaultAspect,
 			autoplay: this.settings.defaultAutoplay,
 			hideCode: this.settings.defaultHideCode,
+			templates: [],
 			customUniforms: [],
 		};
 
@@ -377,7 +378,21 @@ export default class GLSLViewerPlugin extends Plugin {
 		} else if (directive.startsWith('@hideCode:')) {
 			config.hideCode = directive.substring(10).trim() === 'true';
 		} else if (directive.startsWith('@template:')) {
-			config.template = directive.substring(10).trim();
+			const templateDirective = directive.substring(10).trim();
+			if (!templateDirective) {
+				return;
+			}
+
+			const templateNames = templateDirective.includes(',')
+				? templateDirective.split(',').map((part) => part.trim()).filter((part) => part.length > 0)
+				: [templateDirective];
+
+			if (!config.templates) {
+				config.templates = [];
+			}
+			config.templates.push(...templateNames);
+			// Keep backward compatibility for older code paths.
+			config.template = config.templates[config.templates.length - 1];
 		} else if (directive.startsWith('@slider:')) {
 			const sliderArgs = directive.substring(8).trim().split(/\s+/).filter((part) => part.length > 0);
 			if (sliderArgs.length >= 4) {
@@ -474,6 +489,32 @@ export default class GLSLViewerPlugin extends Plugin {
 		}
 	}
 
+	private getTemplateSequence(config: ShaderConfig): string[] {
+		if (config.templates && config.templates.length > 0) {
+			return config.templates;
+		}
+		return config.template ? [config.template] : [];
+	}
+
+	private async applyTemplatesInOrder(
+		templateNames: string[],
+		shaderCode: string,
+		container: HTMLElement,
+		child: GLSLViewerChild,
+	): Promise<string | null> {
+		let processedShaderCode = shaderCode;
+		for (const templateName of templateNames) {
+			const templateResult = await this.templateManager.loadAndApplyTemplate(templateName, processedShaderCode);
+			if (!templateResult) {
+				ErrorDisplay.createAndShow(container, `Template not found: ${templateName}`);
+				child.setRenderer(null);
+				return null;
+			}
+			processedShaderCode = templateResult;
+		}
+		return processedShaderCode;
+	}
+
 	/**
  * Resolve texture path from shortcut key, texture folder, or return original path
  */
@@ -554,16 +595,10 @@ export default class GLSLViewerPlugin extends Plugin {
 				child.setRenderer(null);
 			});
 
-			let processedShaderCode = shaderCode;
-			if (config.template) {
-				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
-				if (templateResult) {
-					processedShaderCode = templateResult;
-				} else {
-					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
-					child.setRenderer(null);
-					return;
-				}
+			const templateNames = this.getTemplateSequence(config);
+			const processedShaderCode = await this.applyTemplatesInOrder(templateNames, shaderCode, container, child);
+			if (!processedShaderCode) {
+				return;
 			}
 
 			glslRenderer.setCustomUniformDefinitions(config.customUniforms);
@@ -878,16 +913,10 @@ export default class GLSLViewerPlugin extends Plugin {
 				child.setRenderer(null);
 			});
 
-			let processedShaderCode = shaderCode;
-			if (config.template) {
-				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
-				if (templateResult) {
-					processedShaderCode = templateResult;
-				} else {
-					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
-					child.setRenderer(null);
-					return null;
-				}
+			const templateNames = this.getTemplateSequence(config);
+			const processedShaderCode = await this.applyTemplatesInOrder(templateNames, shaderCode, container, child);
+			if (!processedShaderCode) {
+				return null;
 			}
 
 			glslRenderer.setCustomUniformDefinitions(config.customUniforms);
