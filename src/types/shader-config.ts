@@ -35,6 +35,7 @@ export interface ShaderConfig {
 	autoplay: boolean;
 	hideCode: boolean;
 	template?: string;
+	templates?: string[];
 	customUniforms?: CustomUniform[];
 	iChannel0?: string;
 	iChannel1?: string;

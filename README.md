@@ -112,6 +112,7 @@ Share complex setups across multiple shaders.
 ````glsl
 ```glsl
 // @viewer
+// @template: common/noise.glsl
 // @template: raymarching.glsl
 vec4 map(vec3 p) {
     float d = length(p) - .5;  // Sphere distance function
@@ -161,7 +162,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 | `@aspect: number` | Canvas aspect ratio (height/width) | 0.5625 |
 | `@autoplay: true/false` | Auto-start animation | false |
 | `@hideCode: true/false` | Hide code block, show viewer only | false |
-| `@template: filename` | Use template from templates folder | - |
+| `@template: filename` | Use template from templates folder (repeatable, applied in order) | - |
 
 **Note**: `@viewer` directive is required only for `glsl` code blocks. `glsl-viewer` blocks are always processed.
 
@@ -210,7 +211,7 @@ Access via Settings → Community plugins → GLSL Viewer:
 
 1. Create a `.glsl` file in your Templates Folder (default: `GLSL Templates/`)
 2. Use `@TEMPLATE_LINES` where your code should be inserted
-3. Reference with `// @template: filename.glsl`
+3. Reference with one or more `// @template: filename.glsl` lines (or comma-separated on one line)
 </br></br></br>
 ## Development
 
@@ -228,5 +229,4 @@ MIT License
 
 - **Obsidian**: v1.0.0+
 - **Shiki-highlighter**
-
 

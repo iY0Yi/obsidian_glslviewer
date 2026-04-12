@@ -35,7 +35,11 @@ export class ThumbnailManager {
 		if (config) {
 			// Include settings that affect thumbnail appearance
 			hashInput += `|aspect:${config.aspect}`;
-			if (config.template) hashInput += `|template:${config.template}`;
+			if (config.templates && config.templates.length > 0) {
+				hashInput += `|templates:${config.templates.join('>')}`;
+			} else if (config.template) {
+				hashInput += `|template:${config.template}`;
+			}
 			if (config.customUniforms) {
 				for (const customUniform of config.customUniforms) {
 					switch (customUniform.type) {
