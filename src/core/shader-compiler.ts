@@ -1,3 +1,5 @@
+import { ShaderPrecision } from '../types/shader-config';
+
 export type CompileResult =
 	| { success: true; program: WebGLProgram }
 	| { success: false; error: string };
@@ -15,23 +17,23 @@ export class ShaderCompiler {
 		this.isWebGL2 = isWebGL2;
 	}
 
-	createVertexShader(): string {
+	createVertexShader(precision: ShaderPrecision = 'highp'): string {
 		return this.isWebGL2 ?
 			`#version 300 es
-			precision mediump float;
+			precision ${precision} float;
 			in vec4 position;
 			void main() {
 				gl_Position = position;
 			}` :
-			`precision mediump float;
+			`precision ${precision} float;
 			attribute vec4 position;
 			void main() {
 				gl_Position = position;
 			}`;
 	}
 
-	compileProgram(fragmentShader: string): CompileResult {
-		const vertexShader = this.createVertexShader();
+	compileProgram(fragmentShader: string, precision: ShaderPrecision = 'highp'): CompileResult {
+		const vertexShader = this.createVertexShader(precision);
 
 		try {
 			const result = this.createProgram(vertexShader, fragmentShader);

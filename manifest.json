@@ -1,11 +1,11 @@
 {
 	"id": "glsl-viewer-andy-mod",
-	"name": "GLSL Viewer",
+	"name": "GLSL Viewer (Andy Mod)",
 	"version": "0.2.0",
 	"minAppVersion": "0.15.0",
-	"description": "Preview GLSL shaders.",
+	"description": "Preview GLSL shaders. Modifications by AI & Andy",
 	"author": "iY0Yi & Andy",
-	"authorUrl": "https://github.com/iY0Yi",
+	"authorUrl": "https://github.com/andyg336/obsidian_glslviewer",
 	"fundingUrl": "https://www.paypal.me/atsushihashimoto/",
 	"isDesktopOnly": false
 }

@@ -1,8 +1,10 @@
-export function wrapShaderCode(shaderCode: string, isWebGL2: boolean): string {
+import { ShaderPrecision } from '../types/shader-config';
+
+export function wrapShaderCode(shaderCode: string, isWebGL2: boolean, precision: ShaderPrecision = 'highp'): string {
 	if (isWebGL2) {
 		// WebGL2 (GLSL ES 3.00) shader
 		const header = `#version 300 es
-precision mediump float;
+precision ${precision} float;
 
 uniform vec3 iResolution;
 uniform float iTime;
@@ -36,7 +38,7 @@ void main() {
 		// WebGL1 (GLSL ES 1.00) shader
 		const header = `
 #ifdef GL_ES
-precision mediump float;
+precision ${precision} float;
 #endif
 
 uniform vec3 iResolution;

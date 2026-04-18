@@ -361,7 +361,91 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   bottom: 8px;
   left: 8px;
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.glsl-viewer-slider-panel {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(320px, calc(100% - 16px));
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+.glsl-viewer-slider-row {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 12px;
+}
+
+.glsl-viewer-slider-label,
+.glsl-viewer-slider-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.glsl-viewer-slider-value {
+  min-width: 44px;
+  text-align: right;
+}
+
+.glsl-viewer-slider-input {
+  width: 100%;
+}
+
+.glsl-viewer-toggle-row {
+  grid-template-columns: minmax(72px, auto) 1fr auto;
+}
+
+.glsl-viewer-toggle-input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  justify-self: end;
+}
+
+.glsl-viewer-color-row {
+  grid-template-columns: minmax(72px, auto) 1fr auto;
+}
+
+.glsl-viewer-slider-panel input.glsl-viewer-color-input[type="color"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100% !important;
+  min-width: 0;
+  height: 20px;
+  margin: 0;
+  padding: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px !important;
+  background: transparent;
+  cursor: pointer;
+}
+
+.glsl-viewer-slider-panel input.glsl-viewer-color-input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.glsl-viewer-slider-panel input.glsl-viewer-color-input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+
+.glsl-viewer-slider-panel input.glsl-viewer-color-input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 3px;
 }
 
 .glsl-viewer-button {
@@ -377,6 +461,30 @@ pre.glsl-code-with-viewer[style*="display: none"] {
   /* デフォルトは非表示 */
   align-items: center;
   justify-content: center;
+}
+
+.glsl-viewer-action-button {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.1;
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glsl-viewer-action-button:hover {
+  background: rgba(0, 0, 0, 0.45) !important;
+}
+
+.glsl-viewer-action-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 .glsl-viewer-button.visible {

@@ -35,7 +35,27 @@ export class ThumbnailManager {
 		if (config) {
 			// Include settings that affect thumbnail appearance
 			hashInput += `|aspect:${config.aspect}`;
-			if (config.template) hashInput += `|template:${config.template}`;
+			hashInput += `|precision:${config.precision}`;
+			if (config.templates && config.templates.length > 0) {
+				hashInput += `|templates:${config.templates.join('>')}`;
+			} else if (config.template) {
+				hashInput += `|template:${config.template}`;
+			}
+			if (config.customUniforms) {
+				for (const customUniform of config.customUniforms) {
+					switch (customUniform.type) {
+						case 'toggle':
+							hashInput += `|toggle:${customUniform.name}:${customUniform.value}`;
+							break;
+						case 'color':
+							hashInput += `|color:${customUniform.name}:${customUniform.value[0].toFixed(4)},${customUniform.value[1].toFixed(4)},${customUniform.value[2].toFixed(4)}`;
+							break;
+						default:
+							hashInput += `|slider:${customUniform.name}:${customUniform.value}:${customUniform.min}:${customUniform.max}:${customUniform.step}`;
+							break;
+					}
+				}
+			}
 			if (config.iChannel0) hashInput += `|ch0:${config.iChannel0}`;
 			if (config.iChannel1) hashInput += `|ch1:${config.iChannel1}`;
 			if (config.iChannel2) hashInput += `|ch2:${config.iChannel2}`;

@@ -1,6 +1,8 @@
 # GLSL Viewer
 
 Preview GLSL shaders on Obsidian.
+
+This is the AI-Assisted modified version of the original
 </br></br></br>
 ## Features
 
@@ -23,6 +25,7 @@ Preview GLSL shaders on Obsidian.
 ### And more
 - 📸 **Thumbnail generation**: Automatic thumbnails for non-autoplay shaders
 - ⚙️ Configurable canvas ratio, autoplay, and code visibility
+- 🎚️ Configurable shader float precision (`highp` / `mediump`)
 - 🔧 Flexible configuration using comments in code blocks
 - 🎯 **Texture shortcuts**: Quick reference to frequently used textures
 - 📁 **Texture browser**: Visual texture selection with folder filtering
@@ -46,6 +49,7 @@ Use standard `glsl` code blocks with `@viewer` directive:
 // @viewer
 // @aspect: 0.75
 // @autoplay: true
+// @precision: highp
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / iResolution.xy;
     vec3 col = 0.5 + 0.5 * cos(iTime + uv.xxy + vec3(0, 2, 4));
@@ -62,6 +66,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 @aspect: 0.75
 @autoplay: true
 @hideCode: true
+@precision: highp
 @iChannel0: assets/texture.png
 */
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
@@ -93,6 +98,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 // @autoplay: true
 // @iChannel0: assets/images/texture.jpg
 // @hideCode: true
+// @precision: mediump
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = (fragCoord-iResolution.xy*.5) / iResolution.y;
     uv+=vec2(sin(iTime),cos(iTime));
@@ -112,6 +118,7 @@ Share complex setups across multiple shaders.
 ````glsl
 ```glsl
 // @viewer
+// @template: common/noise.glsl
 // @template: raymarching.glsl
 vec4 map(vec3 p) {
     float d = length(p) - .5;  // Sphere distance function
@@ -161,7 +168,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 | `@aspect: number` | Canvas aspect ratio (height/width) | 0.5625 |
 | `@autoplay: true/false` | Auto-start animation | false |
 | `@hideCode: true/false` | Hide code block, show viewer only | false |
-| `@template: filename` | Use template from templates folder | - |
+| `@precision: highp/mediump` | Float precision used in shader wrapper | highp |
+| `@template: filename` | Use template from templates folder (repeatable, applied in order) | - |
 
 **Note**: `@viewer` directive is required only for `glsl` code blocks. `glsl-viewer` blocks are always processed.
 
@@ -196,6 +204,7 @@ Access via Settings → Community plugins → GLSL Viewer:
 - **Default Aspect Ratio**: Canvas ratio for new shaders
 - **Default Autoplay**: Whether new shaders auto-start by default
 - **Default Hide Code**: Whether to hide code blocks by default
+- **Default Precision**: Float precision used by default (`highp` or `mediump`)
 
 **Folders:** _(in setup priority order)_
 - **Thumbnails Folder**: Where generated thumbnails are stored (default: `GLSL Thumbnails`)
@@ -210,7 +219,7 @@ Access via Settings → Community plugins → GLSL Viewer:
 
 1. Create a `.glsl` file in your Templates Folder (default: `GLSL Templates/`)
 2. Use `@TEMPLATE_LINES` where your code should be inserted
-3. Reference with `// @template: filename.glsl`
+3. Reference with one or more `// @template: filename.glsl` lines (or comma-separated on one line)
 </br></br></br>
 ## Development
 
@@ -228,5 +237,3 @@ MIT License
 
 - **Obsidian**: v1.0.0+
 - **Shiki-highlighter**
-
-

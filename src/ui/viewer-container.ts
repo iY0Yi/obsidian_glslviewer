@@ -114,6 +114,10 @@ export class ViewerContainer {
 		return this.playOverlay;
 	}
 
+	getControls(): HTMLElement {
+		return this.controls;
+	}
+
 	// Utility methods for UI state management
 	showCanvas() {
 		this.canvas.classList.remove('hidden');
@@ -185,5 +189,4 @@ export class ViewerContainer {
 		thumbnailImg.src = dataUrl;
 	}
 }
-
 

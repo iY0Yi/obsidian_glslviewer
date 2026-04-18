@@ -1,6 +1,7 @@
 import { App, Component } from 'obsidian';
 import { TextureManager } from './texture-manager';
 import { ShaderCompiler } from './shader-compiler';
+import { CustomUniform, ShaderPrecision } from '../types/shader-config';
 
 const isWebGL2Context = (context: unknown): context is WebGL2RenderingContext =>
 	typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext;
@@ -31,7 +32,9 @@ export class GLSLRenderer extends Component {
 	private readonly targetFPS: number = 60;
 	private readonly frameDelta: number = 1.0 / 60; // 1/60秒
 	private frameCount: number = 0;
-	private uniforms: Partial<Record<ShaderUniformName, WebGLUniformLocation>> = {};
+	private uniforms: Partial<Record<string, WebGLUniformLocation>> = {};
+	private customUniformDefinitions: CustomUniform[] = [];
+	private customUniformValues: Record<string, number | [number, number, number]> = {};
 	private textureManager: TextureManager | null;
 	private shaderCompiler: ShaderCompiler | null;
 	private app: App | null;
@@ -164,7 +167,7 @@ export class GLSLRenderer extends Component {
 		});
 	}
 
-	loadShader(fragmentShader: string): { success: boolean; error?: string } {
+	loadShader(fragmentShader: string, precision: ShaderPrecision = 'highp'): { success: boolean; error?: string } {
 		if (!this.shaderCompiler || !this.gl) {
 			return { success: false, error: 'Renderer not initialized' };
 		}
@@ -179,7 +182,7 @@ export class GLSLRenderer extends Component {
 		}
 
 		try {
-			const result = this.shaderCompiler.compileProgram(fragmentShader);
+			const result = this.shaderCompiler.compileProgram(fragmentShader, precision);
 			if (!result.success) {
 				return result;
 			}
@@ -226,6 +229,93 @@ export class GLSLRenderer extends Component {
 
 		// Texture resolution uniforms
 		assignUniform('iChannelResolution');
+
+		// Custom uniforms
+		for (const customUniform of this.customUniformDefinitions) {
+			const location = gl.getUniformLocation(program, customUniform.name);
+			if (location !== null) {
+				this.uniforms[customUniform.name] = location;
+			}
+		}
+	}
+
+	setCustomUniformDefinitions(definitions?: CustomUniform[]): void {
+		const isColorValue = (value: unknown): value is [number, number, number] =>
+			Array.isArray(value) &&
+			value.length >= 3 &&
+			typeof value[0] === 'number' &&
+			typeof value[1] === 'number' &&
+			typeof value[2] === 'number' &&
+			Number.isFinite(value[0]) &&
+			Number.isFinite(value[1]) &&
+			Number.isFinite(value[2]);
+
+		this.customUniformDefinitions = (definitions ?? []).map((definition) => ({ ...definition }));
+		const nextValues: Record<string, number | [number, number, number]> = {};
+		for (const definition of this.customUniformDefinitions) {
+			const existingValue = this.customUniformValues[definition.name];
+			if (typeof existingValue === 'number' && Number.isFinite(existingValue)) {
+				nextValues[definition.name] = existingValue;
+			} else if (isColorValue(existingValue)) {
+				nextValues[definition.name] = [existingValue[0], existingValue[1], existingValue[2]];
+			} else if (typeof definition.value === 'number' && Number.isFinite(definition.value)) {
+				nextValues[definition.name] = definition.value;
+			} else if (isColorValue(definition.value)) {
+				nextValues[definition.name] = [definition.value[0], definition.value[1], definition.value[2]];
+			} else {
+				nextValues[definition.name] = 0;
+			}
+		}
+		this.customUniformValues = nextValues;
+	}
+
+	setCustomUniformValue(name: string, value: number | [number, number, number]): void {
+		if (typeof value === 'number') {
+			if (!Number.isFinite(value)) {
+				return;
+			}
+			this.customUniformValues[name] = value;
+		} else if (Array.isArray(value) && value.length >= 3) {
+			const colorValue: [number, number, number] = [value[0], value[1], value[2]];
+			if (!colorValue.every((channel) => Number.isFinite(channel))) {
+				return;
+			}
+			this.customUniformValues[name] = colorValue;
+		} else {
+			return;
+		}
+
+		if (!this.animationId) {
+			this.renderAtTime(this.currentTime);
+		}
+	}
+
+	private applyCustomUniforms() {
+		if (!this.gl) {
+			return;
+		}
+
+		for (const customUniform of this.customUniformDefinitions) {
+			const location = this.uniforms[customUniform.name];
+			if (location === undefined) {
+				continue;
+			}
+
+			const value = this.customUniformValues[customUniform.name];
+			switch (customUniform.type) {
+				case 'color': {
+					const fallbackColor = customUniform.value;
+					const color = Array.isArray(value) ? value : fallbackColor;
+					this.gl.uniform3f(location, color[0], color[1], color[2]);
+					break;
+				}
+				default: {
+					const scalar = typeof value === 'number' ? value : customUniform.value;
+					this.gl.uniform1f(location, scalar);
+					break;
+				}
+			}
+		}
 	}
 
 	private setupGeometry() {
@@ -342,6 +432,7 @@ export class GLSLRenderer extends Component {
 
 		// Set texture resolutions
 		this.updateTextureResolutions();
+		this.applyCustomUniforms();
 
 		// Draw
 		gl.clearColor(0, 0, 0, 1);
@@ -484,6 +575,7 @@ export class GLSLRenderer extends Component {
 
 		// Set texture resolutions
 		this.updateTextureResolutions();
+		this.applyCustomUniforms();
 
 		// Draw
 		gl.clearColor(0, 0, 0, 1);

@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, setIcon } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild, Notice, TFile, setIcon } from 'obsidian';
 interface PrismLanguageGrammar {
 	[key: string]: unknown;
 }
@@ -8,7 +8,7 @@ interface ObsidianPrism {
 	languages: Record<string, PrismLanguageGrammar>;
 }
 import { GLSLViewerSettings, DEFAULT_SETTINGS } from './src/types/settings';
-import { ShaderConfig } from './src/types/shader-config';
+import { CustomUniform, ShaderConfig, ShaderPrecision } from './src/types/shader-config';
 import { wrapShaderCode } from './src/utils/shader-templates';
 import { GLSLViewerSettingTab } from './src/settings/settings-tab';
 import { GLSLRenderer } from './src/core/renderer';
@@ -18,6 +18,12 @@ import { ErrorDisplay } from './src/ui/error-display';
 import { ThumbnailManager } from './src/utils/thumbnail-manager';
 import { TemplateManager } from './src/utils/template-manager';
 import { registerGLSLViewerIcons } from './src/utils/icons';
+
+type CodeBlockLocation = {
+	sourcePath: string;
+	lineStart: number;
+	lineEnd: number;
+};
 
 class GLSLViewerChild extends MarkdownRenderChild {
 	private renderer: GLSLRenderer | null = null;
@@ -211,11 +217,121 @@ export default class GLSLViewerPlugin extends Plugin {
 		await Promise.all(texturePromises);
 	}
 
+	private getCodeBlockLocation(el: HTMLElement, ctx: MarkdownPostProcessorContext): CodeBlockLocation | null {
+		const sectionInfo = ctx.getSectionInfo(el);
+		if (!sectionInfo || !ctx.sourcePath) {
+			return null;
+		}
+
+		return {
+			sourcePath: ctx.sourcePath,
+			lineStart: sectionInfo.lineStart,
+			lineEnd: sectionInfo.lineEnd,
+		};
+	}
+
+	private formatDirectiveNumber(value: number): string {
+		if (!Number.isFinite(value)) {
+			return '0';
+		}
+		return `${parseFloat(value.toFixed(6))}`;
+	}
+
+	private formatColorHex(color: [number, number, number]): string {
+		const clamp01 = (num: number): number => Math.max(0, Math.min(1, Number.isFinite(num) ? num : 0));
+		const toHex = (num: number): string => Math.round(clamp01(num) * 255).toString(16).padStart(2, '0');
+		return `#${toHex(color[0])}${toHex(color[1])}${toHex(color[2])}`;
+	}
+
+	private buildUniformDirective(uniform: CustomUniform): string {
+		switch (uniform.type) {
+			case 'toggle':
+				return `@toggle: ${uniform.name} ${uniform.value >= 0.5 ? 1 : 0}`;
+			case 'color':
+				return `@color: ${uniform.name} ${this.formatColorHex(uniform.value)}`;
+			default:
+				return `@slider: ${uniform.name} ${this.formatDirectiveNumber(uniform.value)} ${this.formatDirectiveNumber(uniform.min)} ${this.formatDirectiveNumber(uniform.max)} ${this.formatDirectiveNumber(uniform.step)}`;
+		}
+	}
+
+	private replaceUniformDirectiveLines(blockLines: string[], customUniforms: CustomUniform[]): string[] | null {
+		const replacements = new Map<string, string>();
+		for (const uniform of customUniforms) {
+			replacements.set(`${uniform.type}:${uniform.name}`, this.buildUniformDirective(uniform));
+		}
+
+		if (replacements.size === 0) {
+			return null;
+		}
+
+		let replacedCount = 0;
+		const updatedLines = blockLines.map((line) => {
+			const match = line.match(/^(\s*\/\/\s*)@(slider|toggle|color):\s*([A-Za-z_][A-Za-z0-9_]*)(?:\s+.*)?$/);
+			if (!match) {
+				return line;
+			}
+			const prefix = match[1];
+			const type = match[2];
+			const name = match[3];
+			const replacement = replacements.get(`${type}:${name}`);
+			if (!replacement) {
+				return line;
+			}
+			replacedCount++;
+			return `${prefix}${replacement}`;
+		});
+
+		return replacedCount > 0 ? updatedLines : null;
+	}
+
+	private async persistUniformDefaults(blockLocation: CodeBlockLocation | null, customUniforms: CustomUniform[]): Promise<boolean> {
+		if (!blockLocation || customUniforms.length === 0) {
+			new Notice('No custom uniforms found to persist.');
+			return false;
+		}
+
+		const file = this.app.vault.getAbstractFileByPath(blockLocation.sourcePath);
+		if (!(file instanceof TFile)) {
+			new Notice('Could not locate source note for this shader block.');
+			return false;
+		}
+
+		try {
+			const content = await this.app.vault.read(file);
+			const lines = content.split('\n');
+			const start = blockLocation.lineStart;
+			const end = blockLocation.lineEnd;
+
+			if (start < 0 || end < start || end >= lines.length) {
+				new Notice('Shader block location is out of date. Reopen the note and try again.');
+				return false;
+			}
+
+			const blockLines = lines.slice(start, end + 1);
+			const updatedBlockLines = this.replaceUniformDirectiveLines(blockLines, customUniforms);
+			if (!updatedBlockLines) {
+				new Notice('Could not find matching @slider/@toggle/@color lines to update.');
+				return false;
+			}
+
+			lines.splice(start, end - start + 1, ...updatedBlockLines);
+			await this.app.vault.modify(file, lines.join('\n'));
+			new Notice('Shader defaults updated in the code block.');
+			return true;
+		} catch {
+			new Notice('Failed to write shader defaults to note.');
+			return false;
+		}
+	}
+
 	private parseShaderConfig(source: string): ShaderConfig {
 		const config: ShaderConfig = {
 			aspect: this.settings.defaultAspect,
 			autoplay: this.settings.defaultAutoplay,
 			hideCode: this.settings.defaultHideCode,
+			precision: this.settings.defaultPrecision,
+			templates: [],
+			customUniforms: [],
 		};
 
 		// Parse directives from single-line comments (//)
@@ -262,8 +378,112 @@ export default class GLSLViewerPlugin extends Plugin {
 			config.autoplay = directive.substring(10).trim() === 'true';
 		} else if (directive.startsWith('@hideCode:')) {
 			config.hideCode = directive.substring(10).trim() === 'true';
+		} else if (directive.startsWith('@precision:')) {
+			const precisionValue = directive.substring(11).trim().toLowerCase();
+			if (precisionValue === 'highp' || precisionValue === 'mediump') {
+				config.precision = precisionValue as ShaderPrecision;
+			}
 		} else if (directive.startsWith('@template:')) {
-			config.template = directive.substring(10).trim();
+			const templateDirective = directive.substring(10).trim();
+			if (!templateDirective) {
+				return;
+			}
+
+			const templateNames = templateDirective.includes(',')
+				? templateDirective.split(',').map((part) => part.trim()).filter((part) => part.length > 0)
+				: [templateDirective];
+
+			if (!config.templates) {
+				config.templates = [];
+			}
+			config.templates.push(...templateNames);
+			// Keep backward compatibility for older code paths.
+			config.template = config.templates[config.templates.length - 1];
+		} else if (directive.startsWith('@slider:')) {
+			const sliderArgs = directive.substring(8).trim().split(/\s+/).filter((part) => part.length > 0);
+			if (sliderArgs.length >= 4) {
+				const name = sliderArgs[0];
+				const value = parseFloat(sliderArgs[1]);
+				const min = parseFloat(sliderArgs[2]);
+				const max = parseFloat(sliderArgs[3]);
+				const step = sliderArgs.length >= 5 ? parseFloat(sliderArgs[4]) : 0.01;
+				const isValidName = /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+				if (isValidName && [value, min, max, step].every((num) => Number.isFinite(num)) && max > min && step > 0) {
+					config.customUniforms?.push({ type: 'slider', name, value, defaultValue: value, min, max, step });
+				}
+			}
+		} else if (directive.startsWith('@toggle:')) {
+			const toggleArgs = directive.substring(8).trim().split(/\s+/).filter((part) => part.length > 0);
+			if (toggleArgs.length >= 1) {
+				const name = toggleArgs[0];
+				const isValidName = /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+				if (!isValidName) {
+					return;
+				}
+
+				const rawValue = (toggleArgs.length >= 2 ? toggleArgs[1] : '0').toLowerCase();
+				let parsedValue = 0;
+				if (rawValue === 'true' || rawValue === 'on' || rawValue === 'yes') {
+					parsedValue = 1;
+				} else if (rawValue === 'false' || rawValue === 'off' || rawValue === 'no') {
+					parsedValue = 0;
+				} else {
+					const numericValue = parseFloat(rawValue);
+					parsedValue = Number.isFinite(numericValue) ? (numericValue >= 0.5 ? 1 : 0) : 0;
+				}
+
+				config.customUniforms?.push({ type: 'toggle', name, value: parsedValue, defaultValue: parsedValue, min: 0, max: 1, step: 1 });
+			}
+		} else if (directive.startsWith('@color:')) {
+			const colorArgs = directive.substring(7).trim().split(/\s+/).filter((part) => part.length > 0);
+			if (colorArgs.length >= 1) {
+				const name = colorArgs[0];
+				const isValidName = /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+				if (!isValidName) {
+					return;
+				}
+
+				const clamp01 = (num: number): number => Math.max(0, Math.min(1, num));
+				const parseHexColor = (token: string): [number, number, number] | null => {
+					const normalized = token.replace(/^#/, '');
+					if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(normalized)) {
+						return null;
+					}
+					const expanded = normalized.length === 3
+						? normalized.split('').map((ch) => `${ch}${ch}`).join('')
+						: normalized;
+					return [
+						parseInt(expanded.slice(0, 2), 16) / 255,
+						parseInt(expanded.slice(2, 4), 16) / 255,
+						parseInt(expanded.slice(4, 6), 16) / 255,
+					];
+				};
+
+				let parsedColor: [number, number, number] = [1, 1, 1];
+				if (colorArgs.length >= 2) {
+					const hexColor = parseHexColor(colorArgs[1]);
+					if (hexColor) {
+						parsedColor = hexColor;
+					} else if (colorArgs.length >= 4) {
+						const r = parseFloat(colorArgs[1]);
+						const g = parseFloat(colorArgs[2]);
+						const b = parseFloat(colorArgs[3]);
+						if ([r, g, b].every((num) => Number.isFinite(num))) {
+							parsedColor = [clamp01(r), clamp01(g), clamp01(b)];
+						}
+					}
+				}
+
+				config.customUniforms?.push({
+					type: 'color',
+					name,
+					value: parsedColor,
+					defaultValue: [parsedColor[0], parsedColor[1], parsedColor[2]],
+					min: 0,
+					max: 1,
+					step: 0.01,
+				});
+			}
 		} else if (directive.startsWith('@iChannel0:')) {
 			config.iChannel0 = this.resolveTexturePath(directive.substring(11).trim());
 		} else if (directive.startsWith('@iChannel1:')) {
@@ -273,6 +493,32 @@ export default class GLSLViewerPlugin extends Plugin {
 		} else if (directive.startsWith('@iChannel3:')) {
 			config.iChannel3 = this.resolveTexturePath(directive.substring(11).trim());
 		}
+	}
+
+	private getTemplateSequence(config: ShaderConfig): string[] {
+		if (config.templates && config.templates.length > 0) {
+			return config.templates;
+		}
+		return config.template ? [config.template] : [];
+	}
+
+	private async applyTemplatesInOrder(
+		templateNames: string[],
+		shaderCode: string,
+		container: HTMLElement,
+		child: GLSLViewerChild,
+	): Promise<string | null> {
+		let processedShaderCode = shaderCode;
+		for (const templateName of templateNames) {
+			const templateResult = await this.templateManager.loadAndApplyTemplate(templateName, processedShaderCode);
+			if (!templateResult) {
+				ErrorDisplay.createAndShow(container, `Template not found: ${templateName}`);
+				child.setRenderer(null);
+				return null;
+			}
+			processedShaderCode = templateResult;
+		}
+		return processedShaderCode;
 	}
 
 	/**
@@ -328,7 +574,13 @@ export default class GLSLViewerPlugin extends Plugin {
 		return codeLines.join('\n');
 	}
 
-	private async createGLSLViewer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig, child: GLSLViewerChild) {
+	private async createGLSLViewer(
+		viewerContainer: ViewerContainer,
+		shaderCode: string,
+		config: ShaderConfig,
+		child: GLSLViewerChild,
+		blockLocation: CodeBlockLocation | null = null,
+	) {
 		const canvas = viewerContainer.getCanvas();
 		const container = viewerContainer.getContainer();
 
@@ -337,7 +589,7 @@ export default class GLSLViewerPlugin extends Plugin {
 				const thumbnailExists = await this.thumbnailManager.thumbnailExists(shaderCode, config);
 				if (thumbnailExists) {
 					await this.displayThumbnail(shaderCode, viewerContainer, config);
-					this.setupLazyRenderer(viewerContainer, shaderCode, config, child);
+					this.setupLazyRenderer(viewerContainer, shaderCode, config, child, blockLocation);
 					return;
 				}
 			}
@@ -349,21 +601,16 @@ export default class GLSLViewerPlugin extends Plugin {
 				child.setRenderer(null);
 			});
 
-			let processedShaderCode = shaderCode;
-			if (config.template) {
-				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
-				if (templateResult) {
-					processedShaderCode = templateResult;
-				} else {
-					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
-					child.setRenderer(null);
-					return;
-				}
+			const templateNames = this.getTemplateSequence(config);
+			const processedShaderCode = await this.applyTemplatesInOrder(templateNames, shaderCode, container, child);
+			if (!processedShaderCode) {
+				return;
 			}
 
-			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
+			glslRenderer.setCustomUniformDefinitions(config.customUniforms);
+			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2, config.precision);
 
-			const loadResult = glslRenderer.loadShader(fullShaderCode);
+			const loadResult = glslRenderer.loadShader(fullShaderCode, config.precision);
 			if (!loadResult.success) {
 				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
 				child.setRenderer(null);
@@ -378,13 +625,14 @@ export default class GLSLViewerPlugin extends Plugin {
 				config,
 				shaderCode,
 				async (vc, sc, cfg) => this.recreateRenderer(vc, sc, cfg, child),
-				(renderer) => child.setRenderer(renderer)
+				(renderer) => child.setRenderer(renderer),
+				async (customUniforms) => this.persistUniformDefaults(blockLocation, customUniforms),
 			);
 
 			if (config.autoplay) {
 				glslRenderer.play();
 			} else {
-				await this.generateThumbnailAndCleanup(shaderCode, glslRenderer, viewerContainer, config, child);
+				await this.generateThumbnailAndCleanup(shaderCode, glslRenderer, viewerContainer, config, child, blockLocation);
 			}
 		} catch (error) {
 			const errorMessage = (error && typeof error === 'object' && 'message' in error)
@@ -398,7 +646,13 @@ export default class GLSLViewerPlugin extends Plugin {
 	/**
 	 * Setup lazy renderer loading for thumbnail-only viewers
 	 */
-	private setupLazyRenderer(viewerContainer: ViewerContainer, shaderCode: string, config: ShaderConfig, child: GLSLViewerChild) {
+	private setupLazyRenderer(
+		viewerContainer: ViewerContainer,
+		shaderCode: string,
+		config: ShaderConfig,
+		child: GLSLViewerChild,
+		blockLocation: CodeBlockLocation | null = null,
+	) {
 		const playOverlay = viewerContainer.getPlayOverlay();
 		if (playOverlay) {
 			const lazyLoadHandler = () => {
@@ -411,7 +665,7 @@ export default class GLSLViewerPlugin extends Plugin {
 				viewerContainer.showCanvas();
 
 				const modifiedConfig = { ...config, autoplay: true };
-				void this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child)
+				void this.createGLSLViewer(viewerContainer, shaderCode, modifiedConfig, child, blockLocation)
 					.catch((error) => {
 						console.error('Failed to create GLSL viewer during lazy load', error);
 						child.setRenderer(null);
@@ -508,6 +762,7 @@ export default class GLSLViewerPlugin extends Plugin {
 
 		const config = this.parseShaderConfig(source);
 		const shaderCode = this.extractShaderCode(source);
+		const blockLocation = this.getCodeBlockLocation(el, ctx);
 
 		const parent = el.parentElement;
 		if (!parent) {
@@ -524,7 +779,7 @@ export default class GLSLViewerPlugin extends Plugin {
 		const child = new GLSLViewerChild(viewerContainer, shaderCode, config);
 		ctx.addChild(child);
 
-		void this.createGLSLViewer(viewerContainer, shaderCode, config, child);
+		void this.createGLSLViewer(viewerContainer, shaderCode, config, child, blockLocation);
 
 		if (!config.hideCode) {
 			const codeBlockContainer = document.createElement('div');
@@ -604,12 +859,13 @@ export default class GLSLViewerPlugin extends Plugin {
 
 		const config = this.parseShaderConfig(source);
 		const shaderCode = this.extractShaderCode(source);
+		const blockLocation = this.getCodeBlockLocation(el, ctx);
 
 		const viewerContainer = new ViewerContainer(config, el);
 		const child = new GLSLViewerChild(viewerContainer, shaderCode, config);
 		ctx.addChild(child);
 
-		void this.createGLSLViewer(viewerContainer, shaderCode, config, child);
+		void this.createGLSLViewer(viewerContainer, shaderCode, config, child, blockLocation);
 
 		const cleanCode = shaderCode;
 		const codeBlockContainer = document.createElement('div');
@@ -663,21 +919,16 @@ export default class GLSLViewerPlugin extends Plugin {
 				child.setRenderer(null);
 			});
 
-			let processedShaderCode = shaderCode;
-			if (config.template) {
-				const templateResult = await this.templateManager.loadAndApplyTemplate(config.template, shaderCode);
-				if (templateResult) {
-					processedShaderCode = templateResult;
-				} else {
-					ErrorDisplay.createAndShow(container, `Template not found: ${config.template}`);
-					child.setRenderer(null);
-					return null;
-				}
+			const templateNames = this.getTemplateSequence(config);
+			const processedShaderCode = await this.applyTemplatesInOrder(templateNames, shaderCode, container, child);
+			if (!processedShaderCode) {
+				return null;
 			}
 
-			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2);
+			glslRenderer.setCustomUniformDefinitions(config.customUniforms);
+			const fullShaderCode = wrapShaderCode(processedShaderCode, glslRenderer.isWebGL2, config.precision);
 
-			const loadResult = glslRenderer.loadShader(fullShaderCode);
+			const loadResult = glslRenderer.loadShader(fullShaderCode, config.precision);
 			if (!loadResult.success) {
 				ErrorDisplay.createAndShow(container, loadResult.error || 'Shader compilation failed!');
 				child.setRenderer(null);
@@ -784,7 +1035,14 @@ export default class GLSLViewerPlugin extends Plugin {
 	/**
 	 * Generate thumbnail and immediately destroy renderer to free WebGL context
 	 */
-	private async generateThumbnailAndCleanup(shaderCode: string, glslRenderer: GLSLRenderer, viewerContainer: ViewerContainer, config: ShaderConfig, child: GLSLViewerChild) {
+	private async generateThumbnailAndCleanup(
+		shaderCode: string,
+		glslRenderer: GLSLRenderer,
+		viewerContainer: ViewerContainer,
+		config: ShaderConfig,
+		child: GLSLViewerChild,
+		blockLocation: CodeBlockLocation | null = null,
+	) {
 		try {
 			// Check if thumbnail already exists
 			const thumbnailExists = await this.thumbnailManager.thumbnailExists(shaderCode, config);
@@ -810,14 +1068,14 @@ export default class GLSLViewerPlugin extends Plugin {
 			child.setRenderer(null);
 
 			// Set up lazy loading for when user wants to actually view the shader
-			this.setupLazyRenderer(viewerContainer, shaderCode, config, child);
+			this.setupLazyRenderer(viewerContainer, shaderCode, config, child, blockLocation);
 
 		} catch {
 			// Clean up renderer even if thumbnail generation failed
 			glslRenderer.unload();
 			child.setRenderer(null);
 			// Setup lazy loading as fallback
-			this.setupLazyRenderer(viewerContainer, shaderCode, config, child);
+			this.setupLazyRenderer(viewerContainer, shaderCode, config, child, blockLocation);
 		}
 	}
 }
