@@ -180,6 +180,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 - `float iTimeDelta` - Frame delta time ✅
 - `int iFrame` - Frame number ✅
 - `vec4 iMouse` - Mouse position (Shadertoy-compatible) ✅
+- `vec4 iMouseOver` - Mouse position with mouse over, no click required
 - `vec4 iDate` - Date info (year, month, day, seconds) ✅
 - `sampler2D iChannel0-3` - Textures ✅
 - `vec3 iChannelResolution[4]` - Texture resolutions (width, height, 1.0) ✅
