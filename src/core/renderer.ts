@@ -15,6 +15,7 @@ type ShaderUniformName =
 	| 'iTimeDelta'
 	| 'iFrame'
 	| 'iMouse'
+	| 'iMouseOver'
 	| 'iDate'
 	| 'iChannel0'
 	| 'iChannel1'
@@ -46,6 +47,9 @@ export class GLSLRenderer extends Component {
 	// Mouse tracking (Shadertoy compatible)
 	private mousePosX: number = 0;
 	private mousePosY: number = 0;
+	// Track mouse position even when not dragging
+	private mousePosOverX: number = 0;
+	private mousePosOverY: number = 0;
 	private mouseOriX: number = 0;
 	private mouseOriY: number = 0;
 	private mouseIsDown: boolean = false;
@@ -148,10 +152,13 @@ export class GLSLRenderer extends Component {
 		this.registerDomEvent(this.canvas, 'mousemove', (mouseEvent) => {
 			if (!onCanvas(mouseEvent)) return;
 
+			this.mousePosOverX = calcMouseX(mouseEvent);
+			this.mousePosOverY = calcMouseY(mouseEvent);
+
 			if (this.mouseIsDown) {
 				// Update position during drag
-				this.mousePosX = calcMouseX(mouseEvent);
-				this.mousePosY = calcMouseY(mouseEvent);
+				this.mousePosX = this.mousePosOverX;
+				this.mousePosY = this.mousePosOverY;
 				// Keep origin positive during drag
 				this.mouseOriX = Math.abs(this.mouseOriX);
 				this.mouseOriY = Math.abs(this.mouseOriY);
@@ -219,6 +226,7 @@ export class GLSLRenderer extends Component {
 		assignUniform('iTimeDelta');
 		assignUniform('iFrame');
 		assignUniform('iMouse');
+		assignUniform('iMouseOver');
 		assignUniform('iDate');
 
 		// Texture uniforms
@@ -407,6 +415,11 @@ export class GLSLRenderer extends Component {
 			gl.uniform1i(frameUniform, this.frameCount);
 		}
 
+		const mouseOverUniform = this.uniforms.iMouseOver;
+		if (mouseOverUniform) {
+			gl.uniform4f(mouseOverUniform, this.mousePosOverX, this.mousePosOverY, this.mouseOriX, this.mouseOriY);
+		}
+
 		// Mouse position (Shadertoy compatible)
 		const mouseUniform = this.uniforms.iMouse;
 		if (mouseUniform) {
@@ -548,6 +561,11 @@ export class GLSLRenderer extends Component {
 		const frameUniform = this.uniforms.iFrame;
 		if (frameUniform) {
 			gl.uniform1i(frameUniform, Math.floor(timeSeconds * 60)); // Approximate frame count
+		}
+
+		const mouseOverUniform = this.uniforms.iMouseOver;
+		if (mouseOverUniform) {
+			gl.uniform4f(mouseOverUniform, this.mousePosOverX, this.mousePosOverY, this.mouseOriX, this.mouseOriY);
 		}
 
 		// Mouse position (use current values)

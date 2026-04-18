@@ -1,6 +1,6 @@
 {
-	"name": "obsidian-glsl-viewer",
-	"version": "0.1.8",
+	"name": "obsidian-glsl-viewer-andy-mod",
+	"version": "0.2.1",
 	"description": "A plugin to preview GLSL shaders in Obsidian notes with WebGL rendering",
 	"main": "main.js",
 	"scripts": {
